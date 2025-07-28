@@ -125,3 +125,7 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/ 
+
+# Progress files
+/.progress/
+gsc-credential.json 

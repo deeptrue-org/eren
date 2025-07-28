@@ -114,11 +114,47 @@ eren/
   - User input keywords with exclude options
 - **User Selection**: Finalize 5-10 seed keywords
 
-#### 1.2 **Keyword Expansion & Refinement**
+#### 1.2 **🔥 Enhanced Keyword Expansion & Refinement**
 
+- **Smart Browser Integration**:
+  - Connects to your existing Chrome browser with Google Trends open
+  - Uses your logged-in Google session for better reliability
+  - Significantly reduces CAPTCHA occurrences
 - **Related Keyword Generation**: Google Trends, Google Suggest API
+- **Enhanced Scraping**: Improved extraction algorithms with multiple fallback methods
 - **Refinement**: Remove duplicates and irrelevant keywords, sort by search volume
 - **User Selection**: Choose N keywords from top 20-30 suggestions
+
+#### 🚀 **Enhanced Mode Setup**
+
+**Option 1: Quick Setup (Recommended)**
+
+1. Open Google Trends in your browser
+2. Stay logged in to your Google account
+3. Keep the tab open and start keyword expansion
+
+**Option 2: Advanced Setup (Maximum Performance)**
+
+1. Close all Chrome windows
+2. Start Chrome with debugging:
+
+   ```bash
+   # macOS
+   /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+
+   # Windows
+   "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
+   ```
+
+3. Open Google Trends and log in
+
+**Benefits:**
+
+- Uses existing logged-in Google session
+- Significantly reduces CAPTCHA occurrences
+- Faster keyword extraction
+- Better success rates for large keyword lists
+- Real-time monitoring capability
 
 ---
 
@@ -349,3 +385,61 @@ Easily customizable:
 - Content templates and formats
 
 Perfect for content creators, digital marketers, and SEO professionals who need a comprehensive, AI-powered content generation platform!
+
+## 🔑 API Configuration
+
+For enhanced features, configure the following API keys in your `.env.local` file:
+
+### Required for Enhanced Analysis
+
+```bash
+# OpenAI API Key (for GPT-4 powered analysis)
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+**Get your OpenAI API key**: https://platform.openai.com/api-keys
+
+**Features unlocked**:
+
+- ✅ GPT-4 powered SEO analysis
+- ✅ Advanced content optimization
+- ✅ Real-time AI chat feedback
+- ✅ Intelligent content improvements
+
+### Optional for Real Fact-Checking
+
+```bash
+# Bing Search API Key (for real web search verification)
+BING_SEARCH_API_KEY=your_bing_search_api_key_here
+```
+
+**Get your Bing Search API key**: https://portal.azure.com/ (Cognitive Services > Bing Search)
+
+**Features unlocked**:
+
+- ✅ Real web search fact verification
+- ✅ Reliable source checking (Statista, McKinsey, Reuters, etc.)
+- ✅ High confidence fact-checking scores
+
+### Already Configured
+
+```bash
+# Google APIs (for SERP analysis and content briefs)
+GOOGLE_CSE_ID=your_google_custom_search_engine_id
+GOOGLE_API_KEY=your_google_api_key
+```
+
+### ⚠️ Without API Keys
+
+The system will work with limited functionality:
+
+- Basic pattern-based analysis (instead of GPT-4)
+- Simulated fact-checking (instead of real web search)
+- Template-based responses (instead of AI chat)
+
+### 🎯 Recommended Setup
+
+For the best experience:
+
+1. **Minimum**: Add `OPENAI_API_KEY` for enhanced analysis
+2. **Optimal**: Add both `OPENAI_API_KEY` and `BING_SEARCH_API_KEY` for full features
