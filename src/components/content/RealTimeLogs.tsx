@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Terminal, Clock } from 'lucide-react';
@@ -46,7 +46,7 @@ export function RealTimeLogs({
   return (
     <Card className="h-full">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
+        <CardTitle className="flex gap-2 items-center text-sm">
           <Terminal className="w-4 h-4" />
           {title}
           {isActive && (
@@ -59,17 +59,17 @@ export function RealTimeLogs({
       <CardContent>
         <div
           ref={scrollRef}
-          className="h-64 overflow-y-auto bg-slate-50 dark:bg-slate-900 rounded-md p-3 font-mono text-xs"
+          className="overflow-y-auto p-3 h-64 font-mono text-xs rounded-md bg-slate-50 dark:bg-slate-900"
         >
           {logs.length === 0 ? (
-            <div className="text-muted-foreground text-center py-8">
+            <div className="py-8 text-center text-muted-foreground">
               Waiting for process to start...
             </div>
           ) : (
             <div className="space-y-1">
               {logs.map((log, index) => (
                 <div key={index} className="flex gap-2 items-start">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground min-w-0 flex-shrink-0">
+                  <div className="flex flex-shrink-0 gap-1 items-center min-w-0 text-xs text-muted-foreground">
                     <Clock className="w-3 h-3" />
                     {formatTime(log.timestamp)}
                   </div>
@@ -79,7 +79,7 @@ export function RealTimeLogs({
                 </div>
               ))}
               {isActive && (
-                <div className="flex items-center gap-2 text-blue-600 animate-pulse">
+                <div className="flex gap-2 items-center text-blue-600 animate-pulse">
                   <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" />
                   <span>Processing...</span>
                 </div>

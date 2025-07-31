@@ -175,32 +175,73 @@ Guidelines:
 - Maintain SEO optimization while making changes
 - NEVER return null for updatedContent if user requested any content modification`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a professional content editor and writing assistant. Provide helpful, actionable feedback and make precise edits based on user requests.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 1500,
-      }),
-    });
+    // Retry logic for OpenAI API calls
+    let response: Response | undefined;
+    let attempt = 0;
+    const maxRetries = 3;
+    const baseDelay = 1000; // 1 second
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+    while (attempt < maxRetries) {
+      try {
+        response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4',
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are a professional content editor and writing assistant. Provide helpful, actionable feedback and make precise edits based on user requests.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            temperature: 0.7,
+            max_tokens: 1500,
+          }),
+        });
+
+        if (response.ok) {
+          break; // Success, exit retry loop
+        }
+
+        // Check if error is retryable (5xx errors)
+        if (response.status >= 500 && response.status < 600) {
+          attempt++;
+          if (attempt < maxRetries) {
+            const delay = baseDelay * Math.pow(2, attempt - 1); // Exponential backoff
+            console.warn(
+              `OpenAI API error ${response.status}, retrying in ${delay}ms (attempt ${attempt}/${maxRetries})`
+            );
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            continue;
+          }
+        }
+
+        // Non-retryable error or max retries reached
+        throw new Error(`OpenAI API error: ${response.status}`);
+      } catch (error) {
+        if (attempt === maxRetries - 1) {
+          throw error; // Re-throw on final attempt
+        }
+        attempt++;
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        console.warn(
+          `Network error, retrying in ${delay}ms (attempt ${attempt}/${maxRetries}):`,
+          error
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+
+    if (!response) {
+      throw new Error('Failed to get response from OpenAI API after retries');
     }
 
     const data = await response.json();

@@ -1,3 +1,5 @@
+'use client';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -9,27 +11,137 @@ import {
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { Loader2, Check, AlertCircle } from 'lucide-react';
 
 export default function PublishingPage() {
-  const finalContent = `
-# The Ultimate Guide to Real-time Face Swapping
+  const [finalContent, setFinalContent] = useState<string>('');
+  const [selectedBrief, setSelectedBrief] = useState<any>(null);
+  const [activeOutline, setActiveOutline] = useState<any>(null);
+  const [publishingOption, setPublishingOption] = useState<string>('notion');
+  const [isPublishing, setIsPublishing] = useState<boolean>(false);
+  const [publishResult, setPublishResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
-Real-time face swapping has exploded in popularity, captivating audiences on platforms like Instagram, TikTok, and YouTube. This guide covers everything from the underlying technology to setting up your first live face swap. 
+  // Load content from sessionStorage
+  useEffect(() => {
+    try {
+      const storedContent = sessionStorage.getItem('finalizedContent');
+      const storedBrief = sessionStorage.getItem('selectedBrief');
+      const storedOutline = sessionStorage.getItem('activeOutline');
 
-## Introduction to Face Swapping Technology
+      if (storedContent) {
+        setFinalContent(storedContent);
+      }
+      if (storedBrief) {
+        setSelectedBrief(JSON.parse(storedBrief));
+      }
+      if (storedOutline) {
+        setActiveOutline(JSON.parse(storedOutline));
+      }
+    } catch (error) {
+      console.error('Failed to load content from sessionStorage:', error);
+      setFinalContent('Error loading content. Please go back and try again.');
+    }
+  }, []);
 
-We'll explore popular tools like OBS and Streamlabs and offer tips for a seamless, professional broadcast. Whether you're a content creator engaging your audience or a marketer exploring new promotional avenues, this guide is for you.
+  const handlePublish = async () => {
+    if (!finalContent.trim()) {
+      setPublishResult({ success: false, message: 'No content to publish' });
+      return;
+    }
 
-### How it works
-...
+    setIsPublishing(true);
+    setPublishResult(null);
 
-### Popular Apps and Tools
-...
+    try {
+      if (publishingOption === 'notion') {
+        const response = await fetch('/api/publishing/notion', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: finalContent,
+            title: activeOutline?.title || selectedBrief?.topic || 'Blog Post',
+            keyword: activeOutline?.keyword || selectedBrief?.keyword,
+          }),
+        });
 
-## Conclusion
+        const result = await response.json();
 
-According to a 2023 report, the live streaming industry is projected to reach $184.3 billion by 2027.
-  `;
+        if (response.ok) {
+          setPublishResult({
+            success: true,
+            message: `Successfully published to Notion! Page URL: ${result.url}`,
+          });
+        } else {
+          setPublishResult({
+            success: false,
+            message: result.error || 'Failed to publish to Notion',
+          });
+        }
+      } else if (publishingOption === 'markdown') {
+        // Download as Markdown
+        const blob = new Blob([finalContent], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${activeOutline?.title || 'blog-post'}.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        setPublishResult({
+          success: true,
+          message: 'Markdown file downloaded successfully!',
+        });
+      } else if (publishingOption === 'html') {
+        // Download as HTML
+        const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+    <title>${activeOutline?.title || 'Blog Post'}</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1, h2, h3 { color: #333; }
+        p { line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div>${finalContent.replace(/\n/g, '<br>')}</div>
+</body>
+</html>`;
+
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${activeOutline?.title || 'blog-post'}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        setPublishResult({
+          success: true,
+          message: 'HTML file downloaded successfully!',
+        });
+      }
+    } catch (error) {
+      console.error('Publishing error:', error);
+      setPublishResult({
+        success: false,
+        message: 'An error occurred during publishing. Please try again.',
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
 
   return (
     <>
@@ -56,7 +168,11 @@ According to a 2023 report, the live streaming industry is projected to reach $1
                 <h3 className="mb-4 text-lg font-semibold">
                   Publishing Options
                 </h3>
-                <RadioGroup defaultValue="notion" className="space-y-4">
+                <RadioGroup
+                  value={publishingOption}
+                  onValueChange={setPublishingOption}
+                  className="space-y-4"
+                >
                   <div className="flex items-center p-4 rounded-md border">
                     <RadioGroupItem value="notion" id="notion" />
                     <Label htmlFor="notion" className="ml-3">
@@ -93,8 +209,49 @@ According to a 2023 report, the live streaming industry is projected to reach $1
                 </RadioGroup>
               </div>
 
+              {/* Publishing Result */}
+              {publishResult && (
+                <div
+                  className={`p-4 rounded-md border ${
+                    publishResult.success
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
+                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+                  }`}
+                >
+                  <div className="flex gap-2 items-center">
+                    {publishResult.success ? (
+                      <Check className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                    )}
+                    <span
+                      className={`font-medium ${
+                        publishResult.success
+                          ? 'text-green-800'
+                          : 'text-red-800'
+                      }`}
+                    >
+                      {publishResult.message}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end">
-                <Button size="lg">Publish Now</Button>
+                <Button
+                  size="lg"
+                  onClick={handlePublish}
+                  disabled={isPublishing || !finalContent.trim()}
+                >
+                  {isPublishing ? (
+                    <>
+                      <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    'Publish Now'
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>

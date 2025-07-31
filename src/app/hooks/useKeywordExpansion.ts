@@ -1,9 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { getProgress } from '@/lib/progress-store';
-import {
-  ExpandedKeyword,
-  KeywordTrendItem,
-} from '@/lib/keyword-expansion/types';
+import { ExpandedKeyword } from '@/lib/keyword-expansion/types';
 
 export const useKeywordExpansion = () => {
   const [expandedKeywords, setExpandedKeywords] = useState<{

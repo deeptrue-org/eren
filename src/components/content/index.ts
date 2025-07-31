@@ -11,3 +11,12 @@ export { ReviewSection } from './ReviewSection';
 export { AISuggestions } from './AISuggestions';
 export { OptimizationPanel } from './OptimizationPanel';
 export { OutlineStats } from './OutlineStats';
+
+// Optimization Panel components
+export { SeoAnalysisTab } from './SeoAnalysisTab';
+export { FactCheckTab } from './FactCheckTab';
+export { ReadabilityTab } from './ReadabilityTab';
+export { ImprovementActions } from './ImprovementActions';
+
+// Optimization utilities
+export * from './optimization-utils';

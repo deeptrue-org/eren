@@ -144,10 +144,13 @@ async function researchTopic(
   }
 
   const searchQueries = [
-    `${keywords[0]} comparison 2025`,
-    `best ${keywords[0]} tools and pricing`,
-    `latest ${keywords[0]} features and updates`,
-    ...keywords.slice(1, 3).map((kw) => `${kw} market trends 2025`),
+    `${keywords[0]} comparison 2025 latest pricing features`,
+    `best ${keywords[0]} tools 2025 current pricing updates`,
+    `latest ${keywords[0]} features updates 2025 market data`,
+    `${keywords[0]} usage statistics 2025 enterprise adoption`,
+    ...keywords
+      .slice(1, 3)
+      .map((kw) => `${kw} market trends 2025 latest developments`),
   ];
 
   let researchData = '';
@@ -173,11 +176,11 @@ async function researchTopic(
               {
                 role: 'system',
                 content:
-                  'You are a research assistant. Use web search to find current, accurate information about the given topic. Focus on real companies, pricing, features, and recent developments.',
+                  'You are a research assistant specialized in finding the most current 2025 market data. Use web search to find the latest information about the given topic. Prioritize recent developments, current pricing as of 2025, latest features, usage statistics, market trends, and company updates from this year.',
               },
               {
                 role: 'user',
-                content: `Research the following topic and provide current, factual information: "${query}". Include specific company names, pricing details, features, and recent updates.`,
+                content: `Research the following topic and provide the most current 2025 information: "${query}". Include specific company names, latest pricing details, newest features, usage statistics, market adoption data, and recent product updates. Focus on data from 2025 and late 2024.`,
               },
             ],
             max_tokens: 1000,
@@ -220,6 +223,109 @@ async function researchTopic(
   return researchData || 'Research phase completed, but no data was found.';
 }
 
+// Replace the hard-coded structure-based prompts with style-driven instructions
+
+function getPromptByTemplate(
+  brief: ContentBrief,
+  researchData: string
+): string {
+  const template = brief.template || 'comparison';
+  const baseInfo = `
+---
+### **Core Task**
+- **Topic:** "${brief.keyword}" for "${brief.target}".
+- **Audience:** Professional technology audience in 2025.
+- **Tone:** Objective, insightful, and authoritative. Not promotional.
+
+---
+### **Research Data**
+${researchData}
+---`;
+
+  const sharedGuidance = `
+You are a professional technology content writer and domain expert. Based on the research data, write a well-structured, engaging blog post that reflects the style described below:
+
+### **Writing Style & Flow:**
+- Write naturally, as if you're a seasoned blogger with deep industry insight.
+- Create smooth transitions between sections - make each part flow naturally into the next.
+- Use a clear and coherent narrative structure, but avoid rigid templates.
+- Let the content flow logically depending on what the research reveals.
+- Balance structure and flexibility: maintain clear sections but let content feel organic.
+
+### **Content Quality & Research:**
+- Prioritize helpful, real, current, and well-sourced information from reliable sources.
+- Add updated research: supplement with the latest pricing, feature updates, usage statistics, or product developments as of 2025.
+- Avoid repetition: remove or merge redundant points (don't mention the same feature multiple times).
+- Integrate examples naturally: mention tools as part of the narrative, not in repetitive lists.
+- Preserve accuracy: do not change existing factual data unless you find newer or more precise information.
+- Polish language: use active voice, clear phrasing, and avoid unnecessary jargon.
+- Include citations: provide links or references to reliable sources when adding new data.
+
+### **Tone & Audience:**
+- Use a professional but approachable tone suited for your target audience.
+- Keep it objective, helpful, and authoritative without being promotional.
+- Unify tone throughout - consistent voice from start to finish.
+
+### **SEO & Branding:**
+- Use subtle SEO optimization: naturally include the keyword in title, intro, and conclusion.
+- Integrate "Deeptrue" where it makes sense, without over-promoting.
+- Cite sources when referencing facts or data.
+- Do not use placeholders. Do not invent facts.
+
+Write a smooth, cohesive, and polished blog post that feels natural, authoritative, and engaging — ready for publication. The article should reflect the latest developments and current market realities as of 2025, with proper attribution to sources and data-backed insights throughout.
+`;
+
+  switch (template) {
+    case 'comparison':
+      return `${sharedGuidance}
+
+### **Comparison Style Focus:**
+Write a comparison-style article exploring different tools or services relevant to "${brief.keyword}" for "${brief.target}". Weave tool comparisons naturally into the narrative - don't just list features. Highlight key differences through storytelling, using both provided research and current 2025 data for pricing, features, and capabilities. Include specific usage statistics, recent updates, and market positioning to guide readers toward informed decisions.
+
+${baseInfo}`;
+
+    case 'tutorial':
+      return `${sharedGuidance}
+
+### **Tutorial Style Focus:**
+Write a beginner-friendly tutorial that teaches "${brief.target}" how to achieve "${brief.keyword}". Create a conversational learning journey rather than a dry step-by-step list. Base explanations on current real-world tools and workflows as of 2025, building understanding progressively. Include the latest interface updates, new features, and current best practices. Make technical concepts accessible and connect each part to practical, up-to-date goals.
+
+${baseInfo}`;
+
+    case 'trend':
+      return `${sharedGuidance}
+
+### **Trend Analysis Focus:**
+Write a trend-focused article that explores recent shifts or innovations in "${brief.keyword}". Tell the story of how the landscape is evolving through 2025 - don't just list trends. Connect past developments to current changes and future implications using the latest market data, adoption statistics, and product developments. Include specific examples of how leading companies are implementing these trends and quantifiable market changes.
+
+${baseInfo}`;
+
+    case 'guide':
+      return `${sharedGuidance}
+
+### **Practical Guide Focus:**
+Write a helpful guide for readers interested in learning how to use or understand "${brief.keyword}". Create a journey from problem to solution using current 2025 tools and methods. Include the latest pricing information, feature capabilities, and implementation approaches. Weave together explanation, context, and actionable advice based on current market realities in a way that feels like expert consultation rather than a manual.
+
+${baseInfo}`;
+
+    case 'analysis':
+      return `${sharedGuidance}
+
+### **Analytical Focus:**
+Write an analytical blog post that uses both provided research and current 2025 data to explore the impact or performance of "${brief.keyword}" in "${brief.target}". Build a compelling case through data storytelling with the latest usage statistics, market growth numbers, and ROI data. Include recent company reports, industry studies, and quantifiable trends to support a coherent analytical narrative that leads to meaningful, current insights.
+
+${baseInfo}`;
+
+    default:
+      return `${sharedGuidance}
+
+### **General Content Focus:**
+Write a high-quality blog post about "${brief.keyword}" that would appeal to professionals in "${brief.target}". Create a compelling narrative that addresses their current needs and challenges using both provided research and latest 2025 market information. Include specific data points, current pricing, recent developments, and quantifiable trends. Let the structure follow the most logical and engaging path for readers - prioritize clarity, current relevance, and factual depth over formulaic approaches.
+
+${baseInfo}`;
+  }
+}
+
 async function generateFinalContent(
   brief: ContentBrief,
   researchData: string,
@@ -228,79 +334,44 @@ async function generateFinalContent(
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OpenAI API key is not configured.');
 
-  if (sendLog) sendLog(`📝 Creating detailed outline and full draft...`);
+  if (sendLog)
+    sendLog(
+      `📝 Creating detailed outline and full draft using ${
+        brief.template || 'default'
+      } template...`
+    );
 
-  const prompt = `
-You are a professional blog writer. Your primary goal is to write a complete, high-quality, SEO-optimized blog post of 3500-4000 words.
+  const templatePrompt = getPromptByTemplate(brief, researchData);
 
-Use the provided research data to write factual, well-sourced content. Base all specific claims, company names, features, and pricing on the research data provided.
+  const prompt = `${templatePrompt}
 
----
-### **Core Task**
-- **Topic:** "${brief.keyword}" for "${brief.target}".
-- **Audience:** Professional technology audience in 2025.
-- **Tone:** Objective, insightful, and authoritative. Not promotional.
-
----
 ### **Critical Instructions**
-1. **Use Research Data:** Base all specific claims, company names, features, and pricing on the provided research data. Do not invent information.
+1. **Narrative Flow:** Ensure each paragraph flows logically into the next. Avoid abrupt shifts between topics and create smooth transitions that build a cohesive story rather than isolated blocks of information.
 
-2. **Write the Full Draft:** The 'draft' field in your JSON response MUST contain the complete, ready-to-publish blog post with real information from the research.
+2. **Complete Draft:** The 'draft' field in your JSON response MUST contain the complete, ready-to-publish blog post with comprehensive, up-to-date information. Write it as a polished, publication-ready article with the latest 2025 data.
 
-3. **Create a Clear Outline:** The 'sections' field should have 3-4 main H2 sections that flow logically. Only add H3 sub-sections when truly necessary for clarity (1-2 per H2 section maximum).
+3. **Flexible Structure:** Organize the article clearly (intro, analysis, comparison, conclusion) but let the structure emerge naturally from the topic. The 'sections' field should have 3-4 main H2 sections that flow logically based on content needs.
 
-4. **Include Citations:** When using information from research data, reference the sources provided.
+4. **Research Integration & Updates:** Base all claims on the provided research data, but enhance with current 2025 information including latest pricing, feature updates, usage statistics, and product developments. Weave citations naturally into the text with proper attribution.
 
-5. **No Placeholders:** The draft must be complete with real data from research. Do not use placeholders like "[insert content here]".
+5. **Factual Depth:** Supplement the article with reliable online sources to add current data. Include specific numbers, percentages, company updates, and market trends. Cite sources appropriately.
 
-6. **Subtle Deeptrue Mention:** Naturally integrate "Deeptrue" within the content for comparison or to highlight a unique strength, avoiding a sales pitch.
-
----
-### **Research Data**
-${researchData}
----
+6. **No Placeholders:** Write actual content with real, current data. No templates or placeholders like "[insert content here]". Every claim should be backed by either provided research or current 2025 information.
 
 ### **Return JSON Format**
 {
   "sections": [
     {
       "id": "section-1",
-      "title": "H2: Understanding the Challenge",
+      "title": "H2: [Your Creative Section Title]",
       "level": "H2",
-      "wordCount": 900,
-      "keywords": ["challenge", "problem"],
-      "children": []
-    },
-    {
-      "id": "section-2", 
-      "title": "H2: Top Solutions and Tools",
-      "level": "H2",
-      "wordCount": 1200,
-      "keywords": ["solutions", "tools", "comparison"],
-      "children": [
-        { "id": "section-2-1", "title": "H3: Enterprise Solutions", "level": "H3", "wordCount": 600, "keywords": ["enterprise"], "children": [] },
-        { "id": "section-2-2", "title": "H3: Budget-Friendly Options", "level": "H3", "wordCount": 600, "keywords": ["budget"], "children": [] }
-      ]
-    },
-    {
-      "id": "section-3",
-      "title": "H2: Implementation Best Practices", 
-      "level": "H2",
-      "wordCount": 800,
-      "keywords": ["implementation", "best practices"],
-      "children": []
-    },
-    {
-      "id": "section-4",
-      "title": "H2: Future Outlook and Recommendations",
-      "level": "H2", 
-      "wordCount": 700,
-      "keywords": ["future", "recommendations"],
+      "wordCount": [estimated word count],
+      "keywords": ["relevant", "keywords"],
       "children": []
     }
   ],
-  "draft": "# [Engaging Blog Post Title]\\n\\n**Introduction:** [The full 3500-4000 word blog post starts here with information from research data.]",
-  "notes": ["Note about a specific data point to double-check.", "Note about a potential image to add."]
+  "draft": "# [Your Creative Blog Post Title]\\n\\n[The complete 3500-4000 word blog post content here]",
+  "notes": ["Any important notes or considerations"]
 }
 `;
 
@@ -316,7 +387,7 @@ ${researchData}
         {
           role: 'system',
           content:
-            'You are an elite blog writer and industry analyst who produces long-form, data-driven, and engaging articles ready for publication. Use the provided research data to create accurate, well-sourced content with real company names and current information.',
+            'You are an elite blog writer and industry analyst who creates compelling, narrative-driven content ready for publication. Your expertise lies in weaving research data into cohesive stories that flow naturally and engage readers. You excel at crafting smooth transitions, avoiding repetition, and creating content that feels organic rather than templated. You have access to current 2025 market data and can supplement provided research with the latest pricing, feature updates, usage statistics, and product developments. Use both provided research data and current information to create accurate, well-sourced, and up-to-date content with proper citations.',
         },
         { role: 'user', content: prompt },
       ],

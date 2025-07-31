@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import {
   Send,
   Loader2,
@@ -17,7 +16,6 @@ import {
   RefreshCw,
   Check,
   X,
-  Sparkles,
 } from 'lucide-react';
 import { Change, diffLines } from 'diff';
 
@@ -44,6 +42,8 @@ interface ReviewSectionProps {
   onContentChange: (content: string) => void;
   onHasChanges: (hasChanges: boolean) => void;
   onSuggestedContent: (content: string | null) => void;
+  autoImprovementRequest?: { type: string; details: string } | null;
+  onAutoImprovementHandled?: () => void;
 }
 
 interface ChangeHunk {
@@ -295,11 +295,14 @@ export function ReviewSection({
   onContentChange,
   onHasChanges,
   onSuggestedContent,
+  autoImprovementRequest,
+  onAutoImprovementHandled,
 }: ReviewSectionProps) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState<string>('');
   const [isSending, setIsSending] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [shouldAutoSend, setShouldAutoSend] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -348,7 +351,27 @@ export function ReviewSection({
     onHasChanges(hasChanges);
   }, [hasChanges, onHasChanges]);
 
-  const sendMessage = async () => {
+  // Handle auto improvement requests from OptimizationPanel
+  useEffect(() => {
+    if (autoImprovementRequest && !isSending) {
+      const improvementMessage = autoImprovementRequest.details;
+      setCurrentMessage(improvementMessage);
+      setShouldAutoSend(true);
+    }
+  }, [autoImprovementRequest, isSending]);
+
+  // Auto-send when shouldAutoSend is true
+  useEffect(() => {
+    if (shouldAutoSend && currentMessage.trim() && !isSending) {
+      setShouldAutoSend(false);
+      setTimeout(async () => {
+        await handleSendMessage();
+        onAutoImprovementHandled?.();
+      }, 100);
+    }
+  }, [shouldAutoSend, currentMessage, isSending, onAutoImprovementHandled]);
+
+  const handleSendMessage = async () => {
     if (!currentMessage.trim() || isSending) return;
 
     const userMessage: ChatMessage = {
@@ -458,6 +481,10 @@ export function ReviewSection({
     } finally {
       setIsSending(false);
     }
+  };
+
+  const sendMessage = () => {
+    handleSendMessage();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

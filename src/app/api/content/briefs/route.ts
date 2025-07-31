@@ -2,6 +2,61 @@ import { NextResponse } from 'next/server';
 import { ContentBrief } from '@/lib/types';
 
 // ============================================================================
+// TEMPLATE MAPPING UTILITIES
+// ============================================================================
+
+// 템플릿 자동 지정 함수
+function getTemplateByIntent(
+  intent: string
+): 'comparison' | 'tutorial' | 'trend' | 'guide' | 'analysis' {
+  const intentLower = intent.toLowerCase();
+
+  if (
+    intentLower.includes('comparison') ||
+    intentLower.includes('vs') ||
+    intentLower.includes('best') ||
+    intentLower.includes('top')
+  ) {
+    return 'comparison';
+  }
+  if (
+    intentLower.includes('how-to') ||
+    intentLower.includes('tutorial') ||
+    intentLower.includes('step') ||
+    intentLower.includes('guide')
+  ) {
+    return 'tutorial';
+  }
+  if (
+    intentLower.includes('trend') ||
+    intentLower.includes('future') ||
+    intentLower.includes('insight') ||
+    intentLower.includes('prediction')
+  ) {
+    return 'trend';
+  }
+  if (
+    intentLower.includes('use') ||
+    intentLower.includes('tips') ||
+    intentLower.includes('strategy') ||
+    intentLower.includes('practice')
+  ) {
+    return 'guide';
+  }
+  if (
+    intentLower.includes('analysis') ||
+    intentLower.includes('data') ||
+    intentLower.includes('research') ||
+    intentLower.includes('study')
+  ) {
+    return 'analysis';
+  }
+
+  // 기본값은 comparison
+  return 'comparison';
+}
+
+// ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
 
@@ -56,6 +111,7 @@ async function generateBriefsWithWebSearchWithLogs(
   if (!apiKey) throw new Error('OpenAI API key is not configured.');
 
   const results: Record<string, ContentBrief[]> = {};
+  const currentYear = new Date().getFullYear();
 
   for (const keyword of keywords) {
     const logMessage = `🚀 Generating briefs for keyword: "${keyword}"`;
@@ -65,6 +121,8 @@ async function generateBriefsWithWebSearchWithLogs(
     const prompt = `
 You are a content strategist. Generate 5 diverse content briefs for the keyword "${keyword}".
 
+**IMPORTANT: The current year is ${currentYear}. Always use current and future-oriented language. Avoid using outdated years in titles.**
+
 Generate comprehensive briefs with realistic company names, pricing information, and market data based on your knowledge of the industry.
 
 ---
@@ -73,16 +131,29 @@ Generate comprehensive briefs with realistic company names, pricing information,
 ### **Tasks:**
 1. **Include realistic information about:**
    - Leading companies/services in this space
-   - Current market trends and developments
+   - Current market trends and developments (as of ${currentYear})
    - Popular tools and typical pricing ranges
    - Industry best practices
    - Common use cases and challenges
 
-2. **Generate 5 content briefs with different angles:**
-   - Analyze the keyword and identify the most relevant target audiences for this topic
-   - Select 5 different target audiences that would actually search for or benefit from this keyword
-   - Use different content intents (Comparison, How-to, Review, Case Study, Best Practices, Troubleshooting)
-   - Include specific, actionable information
+2. **Generate 5 DISTINCTLY DIFFERENT content briefs with unique angles:**
+   - **Brief 1**: Comparison/Top Tools style - targeting decision-makers comparing options
+   - **Brief 2**: How-to/Tutorial style - targeting beginners needing step-by-step guidance  
+   - **Brief 3**: Trend/Market Analysis style - targeting industry professionals seeking insights
+   - **Brief 4**: Implementation/Strategy style - targeting teams planning deployment
+   - **Brief 5**: Case Study/ROI style - targeting executives evaluating business impact
+   
+   **CRITICAL**: Each brief must have a COMPLETELY DIFFERENT:
+   - Topic angle and title (avoid similar wording)
+   - Target audience (different roles/industries)
+   - Content approach and perspective
+   - Specific focus area within the keyword domain
+
+**TITLE GUIDELINES:**
+- Use "${currentYear}" or "Latest" instead of outdated years
+- For trend content, reference "${currentYear} and Beyond" or "Future of [Topic]"
+- Focus on current capabilities and emerging technologies
+- Avoid any reference to previous years
 
 ---
 ### **Return JSON Format:**
@@ -103,10 +174,25 @@ Generate comprehensive briefs with realistic company names, pricing information,
         "Conclusion with recommendations"
       ],
       "relatedKeywords": ["related keyword 1", "related keyword 2"],
-      "metaDescription": "SEO-optimized meta description with clear value proposition"
+      "metaDescription": "SEO-optimized meta description with clear value proposition",
+      "template": "comparison"
     }
   ]
 }
+
+### **Template Guidelines:**
+- Use "comparison" for: Comparison, Best, Top N, vs. content
+- Use "tutorial" for: How-to, Step-by-step, Tutorial content  
+- Use "trend" for: Trend analysis, Future insights, Market predictions
+- Use "guide" for: Usage tips, Best practices, Strategy guides
+- Use "analysis" for: Data-driven, Research-based, Case studies
+
+**Important:** 
+- Set the "template" field based on the "intent" value for each brief.
+- Create UNIQUE titles - avoid repetitive patterns like "Best X for Y" multiple times
+- Use varied language and different structural approaches for each brief
+- Target different business sizes, industries, or use cases for each brief
+- Always reference current (${currentYear}) information and avoid outdated years
 `;
 
     if (sendLog) sendLog(`📝 Sending request to OpenAI for "${keyword}"...`);
@@ -122,12 +208,11 @@ Generate comprehensive briefs with realistic company names, pricing information,
         messages: [
           {
             role: 'system',
-            content:
-              'You are an expert content strategist who creates data-driven content briefs. Generate comprehensive briefs with realistic company names, tools, and market data based on your knowledge.',
+            content: `You are an expert content strategist who creates diverse, data-driven content briefs. The current year is ${currentYear}. Focus on generating 5 completely different approaches with unique titles, varied audiences, and distinct perspectives. Avoid repetitive patterns and create comprehensive briefs with realistic company names, tools, and market data based on your knowledge. Always use current (${currentYear}) or future-oriented language, avoiding outdated years in titles.`,
           },
           { role: 'user', content: prompt },
         ],
-        temperature: 0.7,
+        temperature: 0.8,
         max_tokens: 4096,
         response_format: { type: 'json_object' },
       }),
@@ -153,7 +238,7 @@ Generate comprehensive briefs with realistic company names, pricing information,
       throw new Error(`Failed to generate briefs for keyword: ${keyword}`);
     }
 
-    // Enhance briefs with fallback data
+    // Enhance briefs with fallback data and auto-assign templates
     const enhancedBriefs = parsedContent.briefs.map((brief: any) => ({
       ...brief,
       searchVolume:
@@ -161,6 +246,8 @@ Generate comprehensive briefs with realistic company names, pricing information,
       difficulty:
         brief.difficulty ||
         ['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)],
+      template:
+        brief.template || getTemplateByIntent(brief.intent || 'Comparison'), // Auto-assign template based on intent
     }));
 
     results[keyword] = enhancedBriefs;
@@ -179,12 +266,15 @@ async function generateBriefsWithWebSearch(
   if (!apiKey) throw new Error('OpenAI API key is not configured.');
 
   const results: Record<string, ContentBrief[]> = {};
+  const currentYear = new Date().getFullYear();
 
   for (const keyword of keywords) {
     console.log(`🚀 Generating briefs for keyword: "${keyword}"`);
 
     const prompt = `
 You are a content strategist. Generate 5 diverse content briefs for the keyword "${keyword}".
+
+**IMPORTANT: The current year is ${currentYear}. Always use current and future-oriented language. Avoid using outdated years in titles.**
 
 Generate comprehensive briefs with realistic company names, pricing information, and market data based on your knowledge of the industry.
 
@@ -194,16 +284,29 @@ Generate comprehensive briefs with realistic company names, pricing information,
 ### **Tasks:**
 1. **Include realistic information about:**
    - Leading companies/services in this space
-   - Current market trends and developments
+   - Current market trends and developments (as of ${currentYear})
    - Popular tools and typical pricing ranges
    - Industry best practices
    - Common use cases and challenges
 
-2. **Generate 5 content briefs with different angles:**
-   - Analyze the keyword and identify the most relevant target audiences for this topic
-   - Select 5 different target audiences that would actually search for or benefit from this keyword
-   - Use different content intents (Comparison, How-to, Review, Case Study, Best Practices, Troubleshooting)
-   - Include specific, actionable information
+2. **Generate 5 DISTINCTLY DIFFERENT content briefs with unique angles:**
+   - **Brief 1**: Comparison/Top Tools style - targeting decision-makers comparing options
+   - **Brief 2**: How-to/Tutorial style - targeting beginners needing step-by-step guidance  
+   - **Brief 3**: Trend/Market Analysis style - targeting industry professionals seeking insights
+   - **Brief 4**: Implementation/Strategy style - targeting teams planning deployment
+   - **Brief 5**: Case Study/ROI style - targeting executives evaluating business impact
+   
+   **CRITICAL**: Each brief must have a COMPLETELY DIFFERENT:
+   - Topic angle and title (avoid similar wording)
+   - Target audience (different roles/industries)
+   - Content approach and perspective
+   - Specific focus area within the keyword domain
+
+**TITLE GUIDELINES:**
+- Use "${currentYear}" or "Latest" instead of outdated years
+- For trend content, reference "${currentYear} and Beyond" or "Future of [Topic]"
+- Focus on current capabilities and emerging technologies
+- Avoid any reference to previous years
 
 ---
 ### **Return JSON Format:**
@@ -224,10 +327,25 @@ Generate comprehensive briefs with realistic company names, pricing information,
         "Conclusion with recommendations"
       ],
       "relatedKeywords": ["related keyword 1", "related keyword 2"],
-      "metaDescription": "SEO-optimized meta description with clear value proposition"
+      "metaDescription": "SEO-optimized meta description with clear value proposition",
+      "template": "comparison"
     }
   ]
 }
+
+### **Template Guidelines:**
+- Use "comparison" for: Comparison, Best, Top N, vs. content
+- Use "tutorial" for: How-to, Step-by-step, Tutorial content  
+- Use "trend" for: Trend analysis, Future insights, Market predictions
+- Use "guide" for: Usage tips, Best practices, Strategy guides
+- Use "analysis" for: Data-driven, Research-based, Case studies
+
+**Important:** 
+- Set the "template" field based on the "intent" value for each brief.
+- Create UNIQUE titles - avoid repetitive patterns like "Best X for Y" multiple times
+- Use varied language and different structural approaches for each brief
+- Target different business sizes, industries, or use cases for each brief
+- Always reference current (${currentYear}) information and avoid outdated years
 `;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -241,12 +359,11 @@ Generate comprehensive briefs with realistic company names, pricing information,
         messages: [
           {
             role: 'system',
-            content:
-              'You are an expert content strategist who creates data-driven content briefs. Generate comprehensive briefs with realistic company names, tools, and market data based on your knowledge.',
+            content: `You are an expert content strategist who creates diverse, data-driven content briefs. The current year is ${currentYear}. Focus on generating 5 completely different approaches with unique titles, varied audiences, and distinct perspectives. Avoid repetitive patterns and create comprehensive briefs with realistic company names, tools, and market data based on your knowledge. Always use current (${currentYear}) or future-oriented language, avoiding outdated years in titles.`,
           },
           { role: 'user', content: prompt },
         ],
-        temperature: 0.7,
+        temperature: 0.8,
         max_tokens: 4096,
         response_format: { type: 'json_object' },
       }),
@@ -269,7 +386,7 @@ Generate comprehensive briefs with realistic company names, pricing information,
       throw new Error(`Failed to generate briefs for keyword: ${keyword}`);
     }
 
-    // Enhance briefs with fallback data
+    // Enhance briefs with fallback data and auto-assign templates
     const enhancedBriefs = parsedContent.briefs.map((brief: any) => ({
       ...brief,
       searchVolume:
@@ -277,6 +394,8 @@ Generate comprehensive briefs with realistic company names, pricing information,
       difficulty:
         brief.difficulty ||
         ['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)],
+      template:
+        brief.template || getTemplateByIntent(brief.intent || 'Comparison'), // Auto-assign template based on intent
     }));
 
     results[keyword] = enhancedBriefs;

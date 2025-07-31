@@ -45,6 +45,10 @@ function OutlinesPageContent() {
   const [localOutlines, setLocalOutlines] = useState<ContentOutline[]>([]);
 
   const [hasChanges, setHasChanges] = useState<boolean>(false);
+  const [autoImprovementRequest, setAutoImprovementRequest] = useState<{
+    type: string;
+    details: string;
+  } | null>(null);
 
   // Custom hooks
   const {
@@ -123,15 +127,14 @@ function OutlinesPageContent() {
       }
     };
 
-    const brief = loadSelectedBrief();
-
-    // Check for existing outlines in sessionStorage (if returning from next step)
+    // Check for existing outlines in sessionStorage (independent of brief)
     const checkExistingOutlines = () => {
       try {
         const savedOutlines = sessionStorage.getItem('generatedOutlines');
         const savedDraft = sessionStorage.getItem('finalizedContent');
+        const savedActiveOutline = sessionStorage.getItem('activeOutline');
 
-        if (savedOutlines && brief) {
+        if (savedOutlines) {
           const outlines = JSON.parse(savedOutlines);
           console.log('🔄 Restoring existing outlines from sessionStorage');
 
@@ -142,10 +145,44 @@ function OutlinesPageContent() {
               draft: savedDraft,
             }));
             console.log('📄 Found saved draft, will restore content');
+
+            // Restore active outline and editing draft
+            if (savedActiveOutline) {
+              const activeOutlineData = JSON.parse(savedActiveOutline);
+              setActiveOutlineId(activeOutlineData.id);
+              setEditingDraft(savedDraft);
+            }
+
             return updatedOutlines;
           }
 
-          return outlines;
+          // Check if any outline has a saved draft in localStorage
+          const outlinesWithDrafts = outlines.map((outline: any) => {
+            const savedDraftForOutline = localStorage.getItem(
+              `draft-${outline.id}`
+            );
+            if (savedDraftForOutline) {
+              return {
+                ...outline,
+                draft: savedDraftForOutline,
+              };
+            }
+            return outline;
+          });
+
+          // Restore active outline if saved
+          if (savedActiveOutline) {
+            const activeOutlineData = JSON.parse(savedActiveOutline);
+            setActiveOutlineId(activeOutlineData.id);
+            const activeOutlineFromSaved = outlinesWithDrafts.find(
+              (o: any) => o.id === activeOutlineData.id
+            );
+            if (activeOutlineFromSaved) {
+              setEditingDraft(activeOutlineFromSaved.draft || '');
+            }
+          }
+
+          return outlinesWithDrafts;
         }
       } catch (e) {
         console.warn('Failed to restore outlines:', e);
@@ -153,11 +190,33 @@ function OutlinesPageContent() {
       return null;
     };
 
+    // Load brief first
+    const brief = loadSelectedBrief();
+
+    // Then restore outlines (independent of brief to handle refresh)
     const existingOutlines = checkExistingOutlines();
     if (existingOutlines && existingOutlines.length > 0) {
-      console.log('✅ Restoring outlines from sessionStorage');
-      setLocalOutlines(existingOutlines);
+      // Check if the outlines match the current brief
+      if (brief && existingOutlines[0]?.keyword !== brief.keyword) {
+        // Different brief selected, clear previous outlines
+        console.log('🧹 Different brief detected, clearing previous outlines');
+        sessionStorage.removeItem('generatedOutlines');
+        sessionStorage.removeItem('finalizedContent');
+        sessionStorage.removeItem('activeOutline');
+        sessionStorage.removeItem('optimizationResult');
+        // Clear any saved drafts for previous outlines
+        existingOutlines.forEach((outline: any) => {
+          localStorage.removeItem(`draft-${outline.id}`);
+        });
+        setLocalOutlines([]);
+        setActiveOutlineId('');
+        setEditingDraft('');
+      } else {
+        console.log('✅ Restoring outlines from sessionStorage');
+        setLocalOutlines(existingOutlines);
+      }
     }
+
     // Don't auto-generate - let user choose when to start
   }, []); // Empty dependency array to run only once on mount
 
@@ -202,6 +261,13 @@ function OutlinesPageContent() {
     if (activeOutline && editingDraft) {
       analyzeContent(editingDraft, activeOutline.keyword);
     }
+  };
+
+  const handleRequestImprovement = (
+    improvementType: string,
+    details: string
+  ) => {
+    setAutoImprovementRequest({ type: improvementType, details });
   };
 
   const copyToClipboard = () => {
@@ -285,7 +351,17 @@ function OutlinesPageContent() {
                   <div className="flex justify-center">
                     <Button
                       size="lg"
-                      onClick={() => generateOutlines([selectedBrief])}
+                      onClick={() => {
+                        // Clear existing data when generating new outlines
+                        sessionStorage.removeItem('finalizedContent');
+                        sessionStorage.removeItem('activeOutline');
+                        sessionStorage.removeItem('optimizationResult');
+                        // Clear any existing drafts
+                        localOutlines.forEach((outline) => {
+                          localStorage.removeItem(`draft-${outline.id}`);
+                        });
+                        generateOutlines([selectedBrief]);
+                      }}
                       disabled={isLoading}
                     >
                       {isLoading ? (
@@ -364,9 +440,19 @@ function OutlinesPageContent() {
                       )}{' '}
                     </div>
                     <Button
-                      onClick={() =>
-                        selectedBrief && generateOutlines([selectedBrief])
-                      }
+                      onClick={() => {
+                        if (selectedBrief) {
+                          // Clear existing data when regenerating outlines
+                          sessionStorage.removeItem('finalizedContent');
+                          sessionStorage.removeItem('activeOutline');
+                          sessionStorage.removeItem('optimizationResult');
+                          // Clear any existing drafts
+                          localOutlines.forEach((outline) => {
+                            localStorage.removeItem(`draft-${outline.id}`);
+                          });
+                          generateOutlines([selectedBrief]);
+                        }
+                      }}
                       disabled={isLoading || !selectedBrief}
                     >
                       {isLoading ? (
@@ -450,6 +536,7 @@ function OutlinesPageContent() {
                 optimizationResult={optimizationResult}
                 isAnalyzing={isAnalyzing}
                 onAnalyze={handleStartOptimization}
+                onRequestImprovement={handleRequestImprovement}
               />
 
               {/* AI Assistant & Review */}
@@ -461,6 +548,10 @@ function OutlinesPageContent() {
                   onContentChange={handleContentChange}
                   onHasChanges={setHasChanges}
                   onSuggestedContent={setSuggestedContent}
+                  autoImprovementRequest={autoImprovementRequest}
+                  onAutoImprovementHandled={() =>
+                    setAutoImprovementRequest(null)
+                  }
                 />
               )}
             </div>

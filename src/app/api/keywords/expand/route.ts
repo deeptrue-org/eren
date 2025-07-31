@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProgress, updateProgress } from '@/lib/progress-store';
-import { getGoogleSuggestFromApi } from '@/lib/keyword-expansion/suggest-api-service';
 import { fetchTrendsData } from '@/lib/keyword-expansion/trends-fetcher';
 import { processKeywordsData } from '@/lib/keyword-expansion/processor';
 import { KeywordIdea, countryToLang } from '@/lib/keyword-expansion/types';
@@ -13,7 +12,7 @@ async function processKeywordExpansion(sessionId: string, body: any) {
   const {
     seedKeywords,
     countries = ['WW'],
-    selectedApis = ['suggest', 'trends'],
+    selectedApis = ['trends'],
     useSerpApi = false, // This will be unused for now but kept for potential future use
     timeRange = 'today 3-m', // This will be unused for now
     browserInfo,
@@ -46,40 +45,9 @@ async function processKeywordExpansion(sessionId: string, body: any) {
         logs: [`🌐 Expanding keywords for ${country} country...`],
       });
 
-      // Step 1: Fetch Google Suggest data for all keywords in a single loop
-      if (selectedApis.includes('suggest')) {
-        await updateProgress(sessionId, {
-          currentSource: 'Fetching Google Suggestions...',
-        });
-        for (const seed of seedKeywords) {
-          if (await checkIsStopped()) break;
-          try {
-            const suggestIdeas = await getGoogleSuggestFromApi(seed, lang);
-            langIdeas.push(...suggestIdeas);
-            await updateProgress(sessionId, {
-              collectedKeywords:
-                (await getProgress(sessionId))?.collectedKeywords ||
-                0 + suggestIdeas.length,
-              logs: [
-                `✅ Found ${suggestIdeas.length} suggestions for "${seed}"`,
-              ],
-              results: { ...allIdeas, [lang]: langIdeas },
-            });
-          } catch (suggestError: any) {
-            console.error(
-              `[${sessionId}] Failed to get suggestions for "${seed}":`,
-              suggestError.message
-            );
-            await updateProgress(sessionId, {
-              logs: [`❌ Suggest failed for "${seed}"`],
-            });
-          }
-        }
-      }
-
       if (await checkIsStopped()) break;
 
-      // Step 2: Fetch Google Trends data for all keywords in a single batch call
+      // Fetch Google Trends data for all keywords in a single batch call
       if (selectedApis.includes('trends')) {
         await updateProgress(sessionId, {
           currentSource: `Fetching Google Trends data...`,
