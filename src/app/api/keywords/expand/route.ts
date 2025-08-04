@@ -3,6 +3,10 @@ import { getProgress, updateProgress } from '@/lib/progress-store';
 import { fetchTrendsData } from '@/lib/keyword-expansion/trends-fetcher';
 import { processKeywordsData } from '@/lib/keyword-expansion/processor';
 import { KeywordIdea, countryToLang } from '@/lib/keyword-expansion/types';
+import {
+  getGoogleTrendsFromSerpApi,
+  TimeRange,
+} from '@/lib/keyword-expansion/serpapi-service';
 
 const expansionLock = new Set<string>();
 
@@ -13,10 +17,20 @@ async function processKeywordExpansion(sessionId: string, body: any) {
     seedKeywords,
     countries = ['WW'],
     selectedApis = ['trends'],
-    useSerpApi = false, // This will be unused for now but kept for potential future use
-    timeRange = 'today 3-m', // This will be unused for now
+    useSerpApi = false, // Enable SERP API keyword expansion
+    timeRange = 'today 3-m', // Time range for trends and SERP API data
     browserInfo,
   } = body;
+
+  console.log(`[${sessionId}] 📥 Received request:`, {
+    seedKeywords,
+    seedKeywordsLength: seedKeywords?.length || 0,
+    countries,
+    selectedApis,
+    useSerpApi,
+    timeRange,
+    hasBrowserInfo: !!browserInfo,
+  });
 
   await updateProgress(sessionId, {
     totalKeywords: seedKeywords.length * countries.length,
@@ -55,9 +69,16 @@ async function processKeywordExpansion(sessionId: string, body: any) {
         try {
           console.log(
             `[${sessionId}] Fetching trends data for seeds:`,
-            seedKeywords
+            seedKeywords,
+            `countries: ${countries.join(', ')}, timeRange: ${timeRange}`
           );
-          const trendsResults = await fetchTrendsData(seedKeywords, sessionId);
+          const trendsResults = await fetchTrendsData(
+            seedKeywords,
+            sessionId,
+            false, // forceRefetch
+            countries,
+            timeRange
+          );
           console.log(`[${sessionId}] Trends results received:`, trendsResults);
 
           for (const seed of seedKeywords) {
@@ -212,6 +233,166 @@ async function processKeywordExpansion(sessionId: string, body: any) {
           );
           await updateProgress(sessionId, {
             logs: [`❌ Failed to get bulk Trends data.`],
+          });
+        }
+      }
+
+      // Fetch SERP API data if enabled
+      if (selectedApis.includes('serpapi') && useSerpApi) {
+        await updateProgress(sessionId, {
+          currentSource: `Fetching SERP API data...`,
+          logs: [`🔍 Expanding keywords via SERP API for ${country}...`],
+        });
+
+        try {
+          console.log(
+            `[${sessionId}] Fetching SERP API data for seeds:`,
+            seedKeywords,
+            `country: ${country}, timeRange: ${timeRange}`
+          );
+
+          for (const seed of seedKeywords) {
+            if (await checkIsStopped()) break;
+
+            await updateProgress(sessionId, {
+              currentSource: `SERP API: ${seed}`,
+              logs: [
+                `🔍 Getting related keywords for "${seed}" via SERP API...`,
+              ],
+            });
+
+            // 🔥 FIXED: Always ensure seed keyword is included in results
+            let seedIdea = langIdeas.find((i) => i.keyword === seed);
+            if (!seedIdea) {
+              console.log(`[${sessionId}] Creating seed idea for "${seed}"`);
+              seedIdea = {
+                keyword: seed,
+                source: 'seed',
+                volume: 0,
+                lang,
+                selected: true,
+              };
+              langIdeas.push(seedIdea);
+            }
+
+            try {
+              const serpApiResults = await getGoogleTrendsFromSerpApi(
+                seed,
+                lang,
+                country === 'WW' ? 'US' : country, // Use US for worldwide, else use country code
+                timeRange as TimeRange
+              );
+
+              console.log(
+                `[${sessionId}] SERP API results for "${seed}":`,
+                serpApiResults
+              );
+
+              // 🔥 FIXED: Apply complete trends data to seed keyword
+              if (serpApiResults.seedKeywordData) {
+                console.log(
+                  `[${sessionId}] Applying SERP API trends data to seed keyword "${seed}"`
+                );
+                // Update the existing seed idea with complete trends data
+                Object.assign(seedIdea, serpApiResults.seedKeywordData);
+
+                console.log(
+                  `[${sessionId}] ✅ Seed keyword "${seed}" enriched with SERP API data:`,
+                  {
+                    hasInterestOverTime: !!seedIdea.interestOverTime?.length,
+                    hasInterestByRegion: !!seedIdea.interestByRegion?.length,
+                    hasRelatedQueries: !!(
+                      seedIdea.relatedQueries?.top?.length ||
+                      seedIdea.relatedQueries?.rising?.length
+                    ),
+                    hasRelatedTopics: !!(
+                      seedIdea.relatedTopics?.top?.length ||
+                      seedIdea.relatedTopics?.rising?.length
+                    ),
+                    timeRange: seedIdea.timeRange,
+                    geo: seedIdea.geo,
+                  }
+                );
+              }
+
+              // Add SERP API related keywords to langIdeas
+              langIdeas.push(...serpApiResults.relatedKeywords);
+
+              // Count how many related keywords have trends data
+              const relatedWithTrends = serpApiResults.relatedKeywords.filter(
+                (kw) => kw.interestOverTime && kw.interestOverTime.length > 0
+              );
+
+              await updateProgress(sessionId, {
+                logs: [
+                  `✅ Found ${serpApiResults.relatedKeywords.length} related keywords for "${seed}" via SERP API`,
+                  `📊 Applied complete trends data to seed keyword "${seed}"`,
+                  `🎯 ${relatedWithTrends.length}/${serpApiResults.relatedKeywords.length} related keywords include trends data`,
+                ],
+              });
+
+              // 🔥 NEW: Send enriched seed keyword and related keywords with trends data to UI immediately
+              const enrichedSeedForUI = {
+                keyword: seedIdea.keyword,
+                lang: seedIdea.lang,
+                source: 'seed' as const,
+                volume: seedIdea.volume || null,
+                interestOverTime: seedIdea.interestOverTime,
+                interestByRegion: seedIdea.interestByRegion,
+                relatedQueries: seedIdea.relatedQueries,
+                relatedTopics: seedIdea.relatedTopics,
+                timeRange: seedIdea.timeRange,
+                geo: seedIdea.geo,
+                isFetching: false,
+                error: undefined,
+              };
+
+              // Include related keywords that have trends data
+              const enrichedRelatedForUI = relatedWithTrends.map((kw) => ({
+                keyword: kw.keyword,
+                lang: kw.lang,
+                source: kw.source,
+                volume: kw.volume || null,
+                interestOverTime: kw.interestOverTime,
+                interestByRegion: kw.interestByRegion,
+                relatedQueries: kw.relatedQueries,
+                relatedTopics: kw.relatedTopics,
+                timeRange: kw.timeRange,
+                geo: kw.geo,
+                isFetching: false,
+                error: undefined,
+              }));
+
+              const allEnrichedKeywords = [
+                enrichedSeedForUI,
+                ...enrichedRelatedForUI,
+              ];
+
+              await updateProgress(sessionId, {
+                intermediateResults: { [lang]: allEnrichedKeywords },
+                logs: [
+                  `🎯 Sent enriched seed keyword "${seed}" and ${relatedWithTrends.length} related keywords to UI with trends data`,
+                ],
+              });
+            } catch (serpError) {
+              console.error(
+                `[${sessionId}] SERP API error for "${seed}":`,
+                serpError
+              );
+              await updateProgress(sessionId, {
+                logs: [
+                  `❌ SERP API error for "${seed}": ${serpError}. Seed keyword still included.`,
+                ],
+              });
+            }
+
+            console.log(`[${sessionId}] Seed "${seed}" ensured in results`);
+          }
+        } catch (error) {
+          console.error(`[${sessionId}] SERP API error:`, error);
+          await updateProgress(sessionId, {
+            currentSource: `Failed to fetch SERP API data`,
+            logs: [`❌ Error fetching SERP API data: ${error}`],
           });
         }
       }

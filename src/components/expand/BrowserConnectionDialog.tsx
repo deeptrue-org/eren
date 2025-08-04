@@ -105,7 +105,7 @@ export function BrowserConnectionDialog({
             <Label>Launch New Instance</Label>
             <div className="grid gap-2">
               <Button
-                variant="secondary"
+                variant="default"
                 onClick={() => handleLaunchBrowser('home')}
                 disabled={isLaunching}
                 size="sm"
@@ -131,13 +131,23 @@ export function BrowserConnectionDialog({
               </div>
             )}
           </div>
-          <div className="p-2 text-xs rounded-md border p-2space-y-5 text-muted-foreground">
+          <div className="p-2 space-y-5 text-xs rounded-md border text-muted-foreground">
+            <h3 className="text-sm font-semibold">
+              ℹ️ How to use Google Trends
+            </h3>
             <ol className="space-y-1">
               <li>1. Open Google Trends</li>
               <li>2. Go to Explore</li>
               <li>3. Select &quot;Worldwide&quot; as Country</li>
-              <li>4. Click &quot;Connect and Start&quot; button</li>
-              <li>5. Wait for Searching keywords to complete</li>
+              <li>
+                4. Make sure all widgets are visible (Interest over time,
+                Interest by region, Related topics, Related queries)
+              </li>
+              <li>5. Click &quot;Connect and Start&quot; button</li>
+              <li>
+                6. Wait for all data downloads to complete (including geomap
+                data)
+              </li>
             </ol>
           </div>
           <div className="space-y-1 p-2 text-xs rounded-md border border-yellow-500 bg-[rgba(255,223,0,20%)] text-muted-foreground">
@@ -145,6 +155,10 @@ export function BrowserConnectionDialog({
               🚨 Keep the opened browser active and don&apos;t switch browsers.
             </p>
             <p>⚠️ If you are facing reCaptcha, please solve it to continue.</p>
+            <p>
+              🗺️ Ensure the &quot;Interest by region&quot; widget is visible to
+              collect geomap data.
+            </p>
           </div>
         </div>
         <DialogFooter>

@@ -7,13 +7,17 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Lightbulb, Loader2 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Search, Lightbulb, Loader2, Bot, Pencil } from 'lucide-react';
 
 interface BriefsStartScreenProps {
   keywords: string[];
   isLoading: boolean;
-  onStartGeneration: () => void;
+  onStartGeneration: (generationMode: 'ai' | 'fixed') => void;
   hasExistingBriefs?: boolean;
+  generationMode: 'ai' | 'fixed';
+  setGenerationMode: (mode: 'ai' | 'fixed') => void;
 }
 
 export function BriefsStartScreen({
@@ -21,6 +25,8 @@ export function BriefsStartScreen({
   isLoading,
   onStartGeneration,
   hasExistingBriefs = false,
+  generationMode,
+  setGenerationMode,
 }: BriefsStartScreenProps) {
   return (
     <div className="space-y-8">
@@ -32,7 +38,7 @@ export function BriefsStartScreen({
           </CardTitle>
           <CardDescription>
             We'll create detailed content briefs for the following{' '}
-            {keywords.length} keywords
+            {keywords.length} keywords. Choose your generation method below.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -49,21 +55,61 @@ export function BriefsStartScreen({
             </div>
           </div>
 
-          <div className="p-4 rounded-lg border bg-muted/50">
-            <h4 className="mb-2 text-sm font-medium">What we'll generate:</h4>
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>• Target audience analysis</li>
-              <li>• Search intent identification</li>
-              <li>• Content angle suggestions</li>
-              <li>• SEO difficulty assessment</li>
-              <li>• Topic recommendations</li>
-            </ul>
+          {/* Generation Mode Selection */}
+          <div className="p-4 rounded-lg border bg-background">
+            <h4 className="mb-4 text-sm font-medium">Generation Method:</h4>
+            <RadioGroup
+              value={generationMode}
+              onValueChange={(value) =>
+                setGenerationMode(value as 'ai' | 'fixed')
+              }
+              className="space-y-4"
+            >
+              <Label
+                htmlFor="ai-mode"
+                className="flex items-start p-4 rounded-md border cursor-pointer transition-all hover:border-primary data-[state=checked]:border-primary"
+              >
+                <RadioGroupItem value="ai" id="ai-mode" className="mt-1" />
+                <div className="ml-4">
+                  <div className="font-semibold flex items-center gap-2">
+                    <Bot className="w-4 h-4" />
+                    AI-Powered Autonomous Mode
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Let the AI analyze the data and autonomously decide the best
+                    5 content angles (e.g., comparison, tutorial, trend
+                    analysis). This provides more creative and diverse results.
+                  </p>
+                </div>
+              </Label>
+              <Label
+                htmlFor="fixed-mode"
+                className="flex items-start p-4 rounded-md border cursor-pointer transition-all hover:border-primary data-[state=checked]:border-primary"
+              >
+                <RadioGroupItem
+                  value="fixed"
+                  id="fixed-mode"
+                  className="mt-1"
+                />
+                <div className="ml-4">
+                  <div className="font-semibold flex items-center gap-2">
+                    <Pencil className="w-4 h-4" />
+                    Fixed Category Mode
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Generate briefs based on the 5 predefined categories:
+                    Comparison, Tutorial, Trend, Guide, and Analysis. This
+                    provides predictable and structured results.
+                  </p>
+                </div>
+              </Label>
+            </RadioGroup>
           </div>
 
           <div className="flex justify-center pt-4">
             <Button
               size="lg"
-              onClick={onStartGeneration}
+              onClick={() => onStartGeneration(generationMode)}
               className="px-8"
               disabled={isLoading || keywords.length === 0}
             >
@@ -72,15 +118,12 @@ export function BriefsStartScreen({
                   <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                   Generating...
                 </>
-              ) : hasExistingBriefs ? (
-                <>
-                  <Lightbulb className="mr-2 w-5 h-5" />
-                  Regenerate Content Briefs
-                </>
               ) : (
                 <>
                   <Lightbulb className="mr-2 w-5 h-5" />
-                  Generate Content Briefs
+                  {hasExistingBriefs
+                    ? 'Regenerate Briefs'
+                    : 'Generate Content Briefs'}
                 </>
               )}
             </Button>

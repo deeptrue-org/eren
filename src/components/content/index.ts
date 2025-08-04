@@ -16,7 +16,9 @@ export { OutlineStats } from './OutlineStats';
 export { SeoAnalysisTab } from './SeoAnalysisTab';
 export { FactCheckTab } from './FactCheckTab';
 export { ReadabilityTab } from './ReadabilityTab';
-export { ImprovementActions } from './ImprovementActions';
 
 // Optimization utilities
-export * from './optimization-utils';
+export * from './OptimizationUtils';
+
+// Improvement components
+export { ImprovementPreviewDialog } from './ImprovementPreviewDialog';

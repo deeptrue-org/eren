@@ -17,17 +17,17 @@ import {
   ExternalLink,
   BookOpen,
 } from 'lucide-react';
-import { getScoreBadgeVariant } from './optimization-utils';
+import { getScoreBadgeVariant } from './OptimizationUtils';
 import { SeoAnalysisTab } from './SeoAnalysisTab';
 import { FactCheckTab } from './FactCheckTab';
 import { ReadabilityTab } from './ReadabilityTab';
-import { ImprovementActions } from './ImprovementActions';
 
 interface OptimizationPanelProps {
   optimizationResult: OptimizationResult | null;
   isAnalyzing: boolean;
   onAnalyze: () => void;
   onRequestImprovement?: (improvementType: string, details: string) => void;
+  onComprehensiveImprovement?: (optimizationResult: OptimizationResult) => void;
 }
 
 export function OptimizationPanel({
@@ -35,7 +35,44 @@ export function OptimizationPanel({
   isAnalyzing,
   onAnalyze,
   onRequestImprovement,
+  onComprehensiveImprovement,
 }: OptimizationPanelProps) {
+  // 개선이 필요한지 판단하는 함수
+  const hasImprovementNeeded = (): boolean => {
+    if (!optimizationResult) return false;
+
+    // SEO 점수가 80 미만이거나
+    if (optimizationResult.seo.overallScore < 80) return true;
+
+    // 전체 점수가 85 미만이거나
+    if (optimizationResult.overallScore < 85) return true;
+
+    // 가독성 점수가 75 미만이거나
+    if (optimizationResult.readability.clarityScore < 75) return true;
+
+    // 팩트체크에서 검증되지 않은 클레임이 있거나
+    if (
+      optimizationResult.factCheck.verifiedCount <
+      optimizationResult.factCheck.totalClaims
+    )
+      return true;
+
+    // 문법 오류가 있거나
+    if (optimizationResult.readability.grammar.errorCount > 0) return true;
+
+    // 수동태 사용이 20% 이상이면
+    if (optimizationResult.readability.passiveVoice.percentage > 20)
+      return true;
+
+    return false;
+  };
+
+  // 포괄적 개선 요청 처리 함수
+  const handleComprehensiveImprovement = () => {
+    if (optimizationResult && onComprehensiveImprovement) {
+      onComprehensiveImprovement(optimizationResult);
+    }
+  };
   const renderLoadingState = () => (
     <div className="flex flex-col items-center py-8">
       <Loader2 className="mb-4 w-8 h-8 animate-spin text-primary" />
@@ -122,7 +159,7 @@ export function OptimizationPanel({
   };
 
   const renderAnalysisButton = () => (
-    <div className="flex justify-center m-6">
+    <div className="flex flex-col gap-3 m-6">
       <Button className="w-full" onClick={onAnalyze} disabled={isAnalyzing}>
         {isAnalyzing ? (
           <>
@@ -141,6 +178,17 @@ export function OptimizationPanel({
           </>
         )}
       </Button>
+
+      {optimizationResult && hasImprovementNeeded() && onRequestImprovement && (
+        <Button
+          variant="default"
+          className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+          onClick={handleComprehensiveImprovement}
+        >
+          <Sparkles className="mr-2 w-4 h-4" />
+          전체 콘텐츠 개선하기
+        </Button>
+      )}
     </div>
   );
 
@@ -166,14 +214,6 @@ export function OptimizationPanel({
         {isAnalyzing && renderLoadingState()}
         {!isAnalyzing && !optimizationResult && renderEmptyState()}
         {!isAnalyzing && optimizationResult && renderTabs()}
-
-        {/* Improvement Actions */}
-        {optimizationResult && onRequestImprovement && (
-          <ImprovementActions
-            optimizationResult={optimizationResult}
-            onRequestImprovement={onRequestImprovement}
-          />
-        )}
       </CardContent>
 
       {renderAnalysisButton()}

@@ -13,6 +13,7 @@ export interface FeedbackRequest {
   chatHistory: ChatMessage[];
   targetKeyword: string;
   optimizationContext?: any;
+  isComprehensiveImprovement?: boolean;
 }
 
 export interface FeedbackResponse {
@@ -102,7 +103,8 @@ async function processUserFeedback(
   userFeedback: string,
   chatHistory: ChatMessage[],
   targetKeyword: string,
-  optimizationContext?: any
+  optimizationContext?: any,
+  isComprehensiveImprovement?: boolean
 ): Promise<{
   aiResponse: string;
   updatedContent?: string;
@@ -137,7 +139,58 @@ Previous optimization analysis:
 `
       : '';
 
-    const prompt = `You are an expert content editor and writing assistant. 
+    // Comprehensive improvement를 위한 특별한 프롬프트
+    const comprehensivePrompt = `You are an expert content editor and SEO specialist. Based on the detailed optimization analysis, please provide a comprehensively improved version of the content.
+
+CURRENT CONTENT:
+${content}
+
+TARGET KEYWORD: ${targetKeyword}
+
+DETAILED OPTIMIZATION ANALYSIS:
+${JSON.stringify(optimizationContext, null, 2)}
+
+TASK: Provide a comprehensively improved version of the content that addresses ALL identified issues:
+
+1. **SEO Improvements**:
+   - Optimize keyword density and placement
+   - Improve heading structure
+   - Enhance meta descriptions
+   - Fix keyword placement issues
+
+2. **Readability Improvements**:
+   - Fix grammar errors: ${
+     optimizationContext?.readability?.grammar?.errors
+       ?.map((e: any) => e.text + ' → ' + e.suggestion)
+       .join(', ') || 'None'
+   }
+   - Reduce passive voice usage (currently ${
+     optimizationContext?.readability?.passiveVoice?.percentage || 0
+   }%)
+   - Improve sentence structure and clarity
+   - Maintain consistent tone
+
+3. **Fact-checking Improvements**:
+   - Add credible sources for unverified claims
+   - Strengthen factual statements
+   - Improve content credibility
+
+4. **Content Quality**:
+   - Enhance overall flow and readability
+   - Maintain the original message while improving quality
+   - Ensure all improvements work together cohesively
+
+IMPORTANT: Provide the COMPLETE rewritten content, not just suggestions.
+
+Respond in JSON format:
+{
+  "aiResponse": "Here is your comprehensively improved content based on the optimization analysis. I've addressed [specific improvements made].",
+  "updatedContent": "The complete improved content addressing all optimization issues",
+  "suggestions": ["Additional suggestion 1", "Additional suggestion 2", "Additional suggestion 3"]
+}`;
+
+    // 일반 피드백을 위한 기존 프롬프트
+    const standardPrompt = `You are an expert content editor and writing assistant. 
 
 CURRENT CONTENT:
 ${content}
@@ -174,6 +227,10 @@ Guidelines:
 - Keep responses concise but thorough
 - Maintain SEO optimization while making changes
 - NEVER return null for updatedContent if user requested any content modification`;
+
+    const prompt = isComprehensiveImprovement
+      ? comprehensivePrompt
+      : standardPrompt;
 
     // Retry logic for OpenAI API calls
     let response: Response | undefined;
@@ -293,11 +350,24 @@ export async function POST(req: Request) {
       chatHistory,
       targetKeyword,
       optimizationContext,
+      isComprehensiveImprovement,
     }: FeedbackRequest = await req.json();
 
-    if (!content || !userFeedback) {
+    if (!content) {
       return NextResponse.json(
-        { error: 'Content and user feedback are required.' },
+        { error: 'Content is required.' },
+        { status: 400 }
+      );
+    }
+
+    // Comprehensive improvement의 경우 자동으로 feedback 생성
+    const finalUserFeedback = isComprehensiveImprovement
+      ? 'Please provide a comprehensive improvement of this content based on the optimization analysis. Address all identified SEO, readability, and fact-checking issues.'
+      : userFeedback;
+
+    if (!finalUserFeedback) {
+      return NextResponse.json(
+        { error: 'User feedback is required.' },
         { status: 400 }
       );
     }
@@ -312,17 +382,22 @@ export async function POST(req: Request) {
     }
 
     console.log(
-      `💬 Processing user feedback: "${userFeedback.substring(0, 50)}..."`
+      `💬 Processing ${
+        isComprehensiveImprovement
+          ? 'comprehensive improvement'
+          : 'user feedback'
+      }: "${finalUserFeedback.substring(0, 50)}..."`
     );
 
     // Process feedback with AI
     const { aiResponse, updatedContent, suggestions } =
       await processUserFeedback(
         content,
-        userFeedback,
+        finalUserFeedback,
         chatHistory || [],
         targetKeyword,
-        optimizationContext
+        optimizationContext,
+        isComprehensiveImprovement
       );
 
     // Create chat message

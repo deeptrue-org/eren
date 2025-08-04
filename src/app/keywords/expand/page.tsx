@@ -10,15 +10,13 @@ import {
   ErrorDisplay,
   BrowserConnectionDialog,
   SeedKeywordsList,
-  ChromeSetupHelper,
 } from '@/components/expand';
-import { useKeywordExpansion } from '@/app/hooks/useKeywordExpansion';
+import { useKeywordExpansion } from '@/hooks/use-keyword-expansion';
 import { ExpandedKeyword } from '@/lib/keyword-expansion/types';
 import { RowSelectionState } from '@tanstack/react-table';
 import { ViewMode } from '@/components/expand/types';
 import { TimeRange } from '@/lib/keyword-expansion/serpapi-service';
-import { ArrowLeft, HelpCircle } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { ArrowLeft } from 'lucide-react';
 
 interface SerpApiAccount {
   total_searches_left: number;
@@ -29,27 +27,24 @@ interface SerpApiAccount {
 function ExpandKeywordsPageComponent() {
   const {
     isExpanding,
-    progress,
     error,
     expandedKeywords,
     startExpansion,
     stopExpansion,
-    resetProgress,
-    sessionId,
     onFetchTrends,
+    onFetchSerpApiFullData,
   } = useKeywordExpansion();
 
   const [seedKeywords, setSeedKeywords] = useState<string[]>(['netflix']);
   const [selectedSeedKeywords, setSelectedSeedKeywords] = useState<string[]>(
     []
   );
-  const [selectedCountries, setSelectedCountries] = useState<string[]>(['WW']);
+  const [selectedCountry, setSelectedCountry] = useState<string>('WW');
   const [apiSource, setApiSource] = useState('trends'); // 'trends' or 'serpapi'
   const [timeRange, setTimeRange] = useState<TimeRange>('today 3-m');
   const [showBrowserDialog, setShowBrowserDialog] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [customerId, setCustomerId] = useState('');
   const [serpApiAccount, setSerpApiAccount] = useState<SerpApiAccount | null>(
     null
   );
@@ -58,10 +53,17 @@ function ExpandKeywordsPageComponent() {
 
   useEffect(() => {
     const savedKeywords = sessionStorage.getItem('selectedKeywords');
+    console.log('🔍 Saved keywords from sessionStorage:', savedKeywords);
+
     if (savedKeywords) {
       const parsed = JSON.parse(savedKeywords);
+      console.log('📝 Parsed keywords:', parsed);
       setSeedKeywords(parsed);
       setSelectedSeedKeywords(parsed); // Set selected keywords as well
+    } else {
+      // No saved keywords, use default and select them
+      console.log('🎯 No saved keywords, using default: netflix');
+      setSelectedSeedKeywords(['netflix']); // Auto-select the default keyword
     }
 
     const fetchSerpApiAccount = async () => {
@@ -78,21 +80,53 @@ function ExpandKeywordsPageComponent() {
     fetchSerpApiAccount();
   }, []);
 
-  const handleStartAndConnect = async (browserInfo: { debugPort?: number }) => {
+  const handleStartAndConnect = async (browserInfo?: {
+    debugPort?: number;
+  }) => {
     setShowBrowserDialog(false);
-    const apisToUse = ['trends'];
-    if (apiSource === 'serpapi') {
-      apisToUse.push('serpapi');
-    }
+    const apisToUse = apiSource === 'serpapi' ? ['serpapi'] : ['trends'];
+
+    console.log('🚀 Starting expansion with params:', {
+      selectedSeedKeywords,
+      selectedCountry: [selectedCountry],
+      apisToUse,
+      useSerpApi: apiSource === 'serpapi',
+      timeRange,
+      browserInfo,
+    });
 
     await startExpansion(
       selectedSeedKeywords,
-      selectedCountries,
+      [selectedCountry],
       apisToUse,
-      apiSource === 'serpapi', // useSerpApi
+      apiSource === 'serpapi',
       timeRange,
-      browserInfo
+      browserInfo || {}
     );
+  };
+
+  const handleExpand = () => {
+    console.log(
+      '🚀 handleExpand called with selectedSeedKeywords:',
+      JSON.stringify(selectedSeedKeywords)
+    );
+    console.log('🚀 selectedSeedKeywords length:', selectedSeedKeywords.length);
+    console.log('🚀 selectedSeedKeywords content:', selectedSeedKeywords);
+
+    if (selectedSeedKeywords.length === 0) {
+      alert('Please select at least one keyword to expand.');
+      return;
+    }
+
+    if (apiSource === 'serpapi') {
+      // SERP API인 경우 브라우저 연결 없이 바로 실행
+      console.log('🔌 Starting SERP API expansion...');
+      handleStartAndConnect({});
+    } else {
+      // Google Trends인 경우 브라우저 연결 다이얼로그 표시
+      console.log('📈 Opening browser connection dialog for Google Trends...');
+      setShowBrowserDialog(true);
+    }
   };
 
   const processedKeywords = useMemo((): ExpandedKeyword[] => {
@@ -148,23 +182,10 @@ function ExpandKeywordsPageComponent() {
   const handleApiSourceChange = (source: string) => {
     // When switching away from SERP API, reset country and time range
     if (apiSource === 'serpapi' && source !== 'serpapi') {
-      setSelectedCountries(['WW']);
+      setSelectedCountry('WW');
       setTimeRange('today 3-m');
     }
     setApiSource(source);
-  };
-
-  const addSeedKeyword = (keyword: string) => {
-    const newKeyword = keyword.trim();
-    if (newKeyword && !seedKeywords.includes(newKeyword)) {
-      setSeedKeywords([...seedKeywords, newKeyword]);
-    }
-  };
-
-  const removeSeedKeyword = (keywordToRemove: string) => {
-    setSeedKeywords(
-      seedKeywords.filter((keyword) => keyword !== keywordToRemove)
-    );
   };
 
   return (
@@ -185,21 +206,22 @@ function ExpandKeywordsPageComponent() {
             seedKeywords={seedKeywords}
             selectedKeywords={selectedSeedKeywords}
             setSelectedKeywords={setSelectedSeedKeywords}
+            selectedCountry={selectedCountry}
+            onCountryChange={setSelectedCountry}
+            timeRange={timeRange}
+            onTimeRangeChange={setTimeRange}
+            apiSource={apiSource}
           />
           <SettingsPanel
             apiSource={apiSource}
             onApiSourceChange={handleApiSourceChange}
-            selectedCountries={selectedCountries}
-            onCountriesChange={setSelectedCountries}
-            timeRange={timeRange}
-            onTimeRangeChange={setTimeRange}
             serpApiAccount={serpApiAccount}
           />
           <ActionButtons
             isExpanding={isExpanding}
             selectedKeywords={selectedSeedKeywords}
             selectedApis={[apiSource]}
-            onExpand={() => setShowBrowserDialog(true)}
+            onExpand={handleExpand}
             onStop={stopExpansion}
           />
         </div>
@@ -212,6 +234,7 @@ function ExpandKeywordsPageComponent() {
             rowSelection={rowSelection}
             setRowSelection={setRowSelection}
             onFetchTrends={onFetchTrends}
+            onFetchSerpApiFullData={onFetchSerpApiFullData}
             timeRange={timeRange}
           />
         </div>

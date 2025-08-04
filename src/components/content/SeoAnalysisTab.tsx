@@ -8,7 +8,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { CheckCircle, XCircle, Image } from 'lucide-react';
-import { getScoreColor, getStatusIcon } from './optimization-utils';
+import { getScoreColor, getStatusIcon } from './OptimizationUtils';
 
 interface SeoAnalysisTabProps {
   seoData: OptimizationResult['seo'];

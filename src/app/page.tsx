@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import Link from 'next/link';
 
 export default function HomePage() {
@@ -45,31 +45,6 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
-
-          {/* Features Section */}
-          <div className="grid grid-cols-1 gap-8 mt-24 md:grid-cols-3">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold">Keyword Research</h3>
-              <p className="mt-2 text-muted-foreground">
-                Input product context → collect seed keywords → expand keywords
-                with AI-powered analysis
-              </p>
-            </div>
-            <div className="text-center">
-              <h3 className="text-lg font-semibold">Content Planning</h3>
-              <p className="mt-2 text-muted-foreground">
-                Generate content briefs → select target audiences and intents →
-                create comprehensive outlines
-              </p>
-            </div>
-            <div className="text-center">
-              <h3 className="text-lg font-semibold">Content Creation</h3>
-              <p className="mt-2 text-muted-foreground">
-                Generate outlines → create drafts → optimize for SEO → publish
-                to multiple platforms
-              </p>
-            </div>
-          </div>
         </div>
       </main>
 
@@ -77,7 +52,7 @@ export default function HomePage() {
       <footer className="border-t">
         <div className="container px-4 py-6 mx-auto">
           <div className="text-sm text-center text-muted-foreground">
-            <p>© 2024 EREN. Built with Next.js 15 and shadcn/ui.</p>
+            <p>© 2025 EREN. All rights reserved.</p>
           </div>
         </div>
       </footer>

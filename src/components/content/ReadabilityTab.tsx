@@ -7,7 +7,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Eye, MessageSquare } from 'lucide-react';
-import { getScoreColor, getStatusIcon } from './optimization-utils';
+import { getScoreColor, getStatusIcon } from './OptimizationUtils';
 
 interface ReadabilityTabProps {
   readabilityData: OptimizationResult['readability'];

@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 
 import { ContentBrief } from '@/lib/types';
-import { ContentOutline, OptimizationResult } from '@/types/content';
+import { ContentOutline } from '@/types/content';
 import {
   ArrowLeft,
   ArrowRight,
@@ -23,17 +23,277 @@ import {
   Target,
   Edit,
   Copy,
+  Eye,
 } from 'lucide-react';
 
 // Import separated components and hooks
 import {
-  OutlineStats,
   OptimizationPanel,
   ReviewSection,
   RealTimeLogs,
   AISuggestions,
+  ImprovementPreviewDialog,
 } from '@/components/content';
 import { useOutlineGeneration, useOptimization } from '@/hooks';
+
+// Markdown Preview Component
+const MarkdownPreview = ({ content }: { content: string }) => {
+  if (!content) {
+    return (
+      <div className="flex justify-center items-center h-64 text-muted-foreground">
+        <div className="text-center">
+          <FileText className="mx-auto mb-4 w-12 h-12 opacity-50" />
+          <p>No content to preview</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Simple markdown parsing for common elements
+  const parseMarkdown = (text: string) => {
+    const lines = text.split('\n');
+    const result: JSX.Element[] = [];
+    let inTable = false;
+    let tableHeaders: string[] = [];
+    let tableRows: string[][] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmedLine = line.trim();
+
+      // Handle images
+      if (trimmedLine.match(/^!\[.*?\]\(.*?\)/)) {
+        const imageMatch = trimmedLine.match(
+          /^!\[(.*?)\]\((.*?)\s*(?:"(.*?)")?\)/
+        );
+        if (imageMatch) {
+          const [, alt, src, title] = imageMatch;
+          result.push(
+            <div
+              key={i}
+              className="p-4 my-6 text-center bg-gray-50 rounded-lg border-2 border-gray-300 border-dashed"
+            >
+              <div className="flex flex-col gap-2 items-center text-gray-600">
+                <div className="flex justify-center items-center w-16 h-16 bg-gray-200 rounded-lg">
+                  <FileText className="w-8 h-8" />
+                </div>
+                <div className="text-sm">
+                  <div className="font-medium">{alt || 'Image'}</div>
+                  <div className="text-xs text-gray-500">{src}</div>
+                  {title && <div className="text-xs italic">{title}</div>}
+                </div>
+              </div>
+            </div>
+          );
+          continue;
+        }
+      }
+
+      // Handle tables
+      if (trimmedLine.includes('|') && !trimmedLine.startsWith('#')) {
+        if (!inTable) {
+          inTable = true;
+          tableHeaders = trimmedLine
+            .split('|')
+            .map((h) => h.trim())
+            .filter((h) => h !== '');
+        } else if (trimmedLine.match(/^[\|\s\-]+$/)) {
+          // Table separator line - skip
+          continue;
+        } else {
+          const row = trimmedLine
+            .split('|')
+            .map((c) => c.trim())
+            .filter((c) => c !== '');
+          if (row.length > 0) {
+            tableRows.push(row);
+          }
+        }
+
+        // Check if next line is still part of table
+        const nextLine = lines[i + 1];
+        if (!nextLine || !nextLine.trim().includes('|')) {
+          // End of table
+          if (tableHeaders.length > 0 && tableRows.length > 0) {
+            result.push(
+              <div key={i} className="overflow-x-auto my-6">
+                <table className="w-full bg-white rounded-lg border border-gray-300 border-collapse">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {tableHeaders.map((header, idx) => (
+                        <th
+                          key={idx}
+                          className="px-4 py-2 font-semibold text-left text-gray-900 border border-gray-300"
+                        >
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tableRows.map((row, rowIdx) => (
+                      <tr
+                        key={rowIdx}
+                        className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                      >
+                        {row.map((cell, cellIdx) => (
+                          <td
+                            key={cellIdx}
+                            className="px-4 py-2 text-gray-700 border border-gray-300"
+                          >
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          }
+          inTable = false;
+          tableHeaders = [];
+          tableRows = [];
+        }
+        continue;
+      }
+
+      // Reset table state if we encounter non-table content
+      if (inTable && !trimmedLine.includes('|')) {
+        inTable = false;
+        tableHeaders = [];
+        tableRows = [];
+      }
+
+      // Handle headings
+      if (trimmedLine.startsWith('#')) {
+        const level = trimmedLine.match(/^#+/)?.[0].length || 1;
+        const text = trimmedLine.replace(/^#+\s*/, '');
+        const headingClasses = {
+          1: 'text-3xl font-bold mt-8 mb-4 text-gray-900',
+          2: 'text-2xl font-bold mt-6 mb-3 text-gray-800',
+          3: 'text-xl font-semibold mt-4 mb-2 text-gray-700',
+          4: 'text-lg font-semibold mt-3 mb-2 text-gray-700',
+          5: 'text-base font-semibold mt-2 mb-1 text-gray-700',
+          6: 'text-sm font-semibold mt-2 mb-1 text-gray-700',
+        };
+        const className =
+          headingClasses[level as keyof typeof headingClasses] ||
+          headingClasses[6];
+        result.push(
+          <div key={i} className={className}>
+            {text}
+          </div>
+        );
+        continue;
+      }
+
+      // Handle blockquotes
+      if (trimmedLine.startsWith('>')) {
+        const text = trimmedLine.replace(/^>\s*/, '');
+        result.push(
+          <blockquote
+            key={i}
+            className="py-2 pl-4 my-4 italic text-gray-700 bg-blue-50 border-l-4 border-blue-500"
+          >
+            {text}
+          </blockquote>
+        );
+        continue;
+      }
+
+      // Handle bullet points
+      if (trimmedLine.match(/^[\*\-\+]\s+/)) {
+        const text = trimmedLine.replace(/^[\*\-\+]\s+/, '');
+        result.push(
+          <div key={i} className="flex gap-2 items-start my-1 ml-4">
+            <span className="text-blue-600 mt-1.5 text-xs">•</span>
+            <span className="text-gray-700">{text}</span>
+          </div>
+        );
+        continue;
+      }
+
+      // Handle numbered lists
+      if (trimmedLine.match(/^\d+\.\s+/)) {
+        const text = trimmedLine.replace(/^\d+\.\s+/, '');
+        const number = trimmedLine.match(/^(\d+)\./)?.[1] || '1';
+        result.push(
+          <div key={i} className="flex gap-2 items-start my-1 ml-4">
+            <span className="text-blue-600 mt-0.5 text-sm font-medium">
+              {number}.
+            </span>
+            <span className="text-gray-700">{text}</span>
+          </div>
+        );
+        continue;
+      }
+
+      // Handle code blocks
+      if (trimmedLine.startsWith('```')) {
+        const nextCodeEnd = lines.findIndex(
+          (l, idx) => idx > i && l.trim() === '```'
+        );
+        if (nextCodeEnd > i) {
+          const codeContent = lines.slice(i + 1, nextCodeEnd).join('\n');
+          result.push(
+            <pre
+              key={i}
+              className="overflow-x-auto p-4 my-4 text-gray-100 bg-gray-900 rounded-lg"
+            >
+              <code>{codeContent}</code>
+            </pre>
+          );
+          i = nextCodeEnd; // Skip to end of code block
+          continue;
+        }
+      }
+
+      // Handle empty lines
+      if (!trimmedLine) {
+        result.push(<div key={i} className="h-4"></div>);
+        continue;
+      }
+
+      // Handle regular paragraphs with inline formatting
+      let formattedText = trimmedLine;
+
+      // Handle bold text
+      formattedText = formattedText.replace(
+        /\*\*(.*?)\*\*/g,
+        '<strong class="font-semibold text-gray-900">$1</strong>'
+      );
+
+      // Handle italic text
+      formattedText = formattedText.replace(
+        /\*(.*?)\*/g,
+        '<em class="italic">$1</em>'
+      );
+
+      // Handle inline code
+      formattedText = formattedText.replace(
+        /`(.*?)`/g,
+        '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm">$1</code>'
+      );
+
+      result.push(
+        <div
+          key={i}
+          className="my-2 leading-relaxed text-gray-700"
+          dangerouslySetInnerHTML={{ __html: formattedText }}
+        />
+      );
+    }
+
+    return result;
+  };
+
+  return (
+    <div className="max-w-none prose prose-sm">
+      <div className="space-y-2">{parseMarkdown(content)}</div>
+    </div>
+  );
+};
 
 // Main Component
 function OutlinesPageContent() {
@@ -49,6 +309,15 @@ function OutlinesPageContent() {
     type: string;
     details: string;
   } | null>(null);
+  const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false);
+
+  // Comprehensive improvement states
+  const [showImprovementDialog, setShowImprovementDialog] =
+    useState<boolean>(false);
+  const [improvedContent, setImprovedContent] = useState<string>('');
+  const [improvementSummary, setImprovementSummary] = useState<string[]>([]);
+  const [isProcessingImprovement, setIsProcessingImprovement] =
+    useState<boolean>(false);
 
   // Custom hooks
   const {
@@ -270,6 +539,63 @@ function OutlinesPageContent() {
     setAutoImprovementRequest({ type: improvementType, details });
   };
 
+  // Comprehensive improvement handler
+  const handleComprehensiveImprovement = async (optimizationResult: any) => {
+    const activeOutline = localOutlines.find((o) => o.id === activeOutlineId);
+    if (!activeOutline || !editingDraft) return;
+
+    setIsProcessingImprovement(true);
+
+    try {
+      const response = await fetch('/api/content/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: editingDraft,
+          userFeedback: '', // Will be auto-generated
+          chatHistory: [],
+          targetKeyword: activeOutline.keyword,
+          optimizationContext: optimizationResult,
+          isComprehensiveImprovement: true,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process comprehensive improvement');
+      }
+
+      const data = await response.json();
+
+      if (data.updatedContent) {
+        setImprovedContent(data.updatedContent);
+        setImprovementSummary(data.suggestions || []);
+        setShowImprovementDialog(true);
+      }
+    } catch (error) {
+      console.error('Error processing comprehensive improvement:', error);
+      // TODO: Show error toast
+    } finally {
+      setIsProcessingImprovement(false);
+    }
+  };
+
+  // Apply improvement handler
+  const handleApplyImprovement = (content: string) => {
+    handleContentChange(content);
+    setShowImprovementDialog(false);
+    setImprovedContent('');
+    setImprovementSummary([]);
+  };
+
+  // Reject improvement handler
+  const handleRejectImprovement = () => {
+    setShowImprovementDialog(false);
+    setImprovedContent('');
+    setImprovementSummary([]);
+  };
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(editingDraft);
   };
@@ -396,17 +722,7 @@ function OutlinesPageContent() {
   }
 
   return (
-    <div className="container px-4 py-8 pb-40 mx-auto">
-      {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Content Creation Studio
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Create, optimize, and finalize your content with AI assistance.
-        </p>
-      </div>
-
+    <div className="space-y-8">
       {localOutlines.map((outline) => (
         <div key={outline.id} className="mt-6">
           {/* Active Content Info */}
@@ -479,12 +795,17 @@ function OutlinesPageContent() {
                   <div className="flex justify-between items-center">
                     <div>
                       <CardTitle className="flex gap-2 items-center">
-                        <Edit className="w-5 h-5" />
-                        Content Editor
+                        {isPreviewMode ? (
+                          <Eye className="w-5 h-5" />
+                        ) : (
+                          <Edit className="w-5 h-5" />
+                        )}
+                        {isPreviewMode ? 'Content Preview' : 'Content Editor'}
                       </CardTitle>
                       <CardDescription>
-                        Edit your content, optimize it, and finalize for
-                        publishing.
+                        {isPreviewMode
+                          ? 'Preview your content with formatted tables, images, and styling.'
+                          : 'Edit your content, optimize it, and finalize for publishing.'}
                         {hasChanges && (
                           <Badge
                             variant="outline"
@@ -497,6 +818,23 @@ function OutlinesPageContent() {
                     </div>
                     <div className="flex gap-2 items-center">
                       <Button
+                        onClick={() => setIsPreviewMode(!isPreviewMode)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {isPreviewMode ? (
+                          <>
+                            <Edit className="mr-1 w-4 h-4" />
+                            Edit
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="mr-1 w-4 h-4" />
+                            Preview
+                          </>
+                        )}
+                      </Button>
+                      <Button
                         onClick={copyToClipboard}
                         variant="outline"
                         size="sm"
@@ -508,25 +846,33 @@ function OutlinesPageContent() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Textarea
-                    className="w-full min-h-[500px] resize-y font-mono text-sm"
-                    value={editingDraft}
-                    onChange={(e) => handleDraftUpdate(e.target.value)}
-                    placeholder="Generated draft content will appear here..."
-                  />
+                  {isPreviewMode ? (
+                    <div className="w-full min-h-[500px] max-h-[700px] overflow-y-auto border rounded-md p-4 bg-white">
+                      <MarkdownPreview content={editingDraft} />
+                    </div>
+                  ) : (
+                    <Textarea
+                      className="w-full min-h-[500px] resize-y font-mono text-sm"
+                      value={editingDraft}
+                      onChange={(e) => handleDraftUpdate(e.target.value)}
+                      placeholder="Generated draft content will appear here..."
+                    />
+                  )}
                 </CardContent>
               </Card>
 
-              {/* AI Suggestions */}
-              <AISuggestions
-                originalContent={editingDraft}
-                suggestedContent={suggestedContent}
-                onApply={(content) => {
-                  handleContentChange(content);
-                  setSuggestedContent(null);
-                }}
-                onReject={() => setSuggestedContent(null)}
-              />
+              {/* AI Suggestions - Only show in Edit mode */}
+              {!isPreviewMode && (
+                <AISuggestions
+                  originalContent={editingDraft}
+                  suggestedContent={suggestedContent}
+                  onApply={(content) => {
+                    handleContentChange(content);
+                    setSuggestedContent(null);
+                  }}
+                  onReject={() => setSuggestedContent(null)}
+                />
+              )}
             </div>
 
             {/* Sidebar - Optimization & AI Assistant */}
@@ -534,9 +880,10 @@ function OutlinesPageContent() {
               {/* Optimization Panel */}
               <OptimizationPanel
                 optimizationResult={optimizationResult}
-                isAnalyzing={isAnalyzing}
+                isAnalyzing={isAnalyzing || isProcessingImprovement}
                 onAnalyze={handleStartOptimization}
                 onRequestImprovement={handleRequestImprovement}
+                onComprehensiveImprovement={handleComprehensiveImprovement}
               />
 
               {/* AI Assistant & Review */}
@@ -559,53 +906,104 @@ function OutlinesPageContent() {
         </div>
       ))}
 
-      {/* Fixed Footer Navigation */}
-      <div className="fixed right-0 bottom-0 left-0 z-20 p-4 border-t backdrop-blur-sm bg-background/80">
-        <div className="container flex gap-4 justify-between items-center mx-auto">
-          <Button variant="outline" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 w-4 h-4" />
-            Back to Briefs
-          </Button>
-          <Button
-            size="lg"
-            onClick={() => {
-              sessionStorage.setItem('finalizedContent', editingDraft);
-              sessionStorage.setItem('reviewComplete', 'true');
-
-              // Save outlines for restoration
-              if (localOutlines.length > 0) {
-                sessionStorage.setItem(
-                  'generatedOutlines',
-                  JSON.stringify(localOutlines)
-                );
-              }
-
-              if (activeOutline) {
-                sessionStorage.setItem(
-                  'activeOutline',
-                  JSON.stringify(activeOutline)
-                );
-              }
-              if (optimizationResult) {
-                sessionStorage.setItem(
-                  'optimizationResult',
-                  JSON.stringify(optimizationResult)
-                );
-              }
-              router.push('/publishing');
-            }}
-            disabled={localOutlines.length === 0}
-          >
-            Complete & Publish →
-            <ArrowRight className="ml-2 w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+      {/* Improvement Preview Dialog */}
+      <ImprovementPreviewDialog
+        isOpen={showImprovementDialog}
+        onClose={() => setShowImprovementDialog(false)}
+        originalContent={editingDraft}
+        improvedContent={improvedContent}
+        improvementSummary={improvementSummary}
+        onApply={handleApplyImprovement}
+        onReject={handleRejectImprovement}
+        isApplying={false}
+      />
     </div>
   );
 }
 
+// Separate component to handle navigation with outlines
+function OutlinesNavigationButton() {
+  const router = useRouter();
+  const [hasOutlines, setHasOutlines] = useState(false);
+  const [editingDraft, setEditingDraft] = useState('');
+  const [localOutlines, setLocalOutlines] = useState<ContentOutline[]>([]);
+  const [optimizationResult, setOptimizationResult] = useState<any>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Check for outlines
+      const storedOutlines = sessionStorage.getItem('generatedOutlines');
+      const storedDraft = sessionStorage.getItem('finalizedContent');
+      const storedOptimization = sessionStorage.getItem('optimizationResult');
+
+      if (storedOutlines) {
+        try {
+          const outlines = JSON.parse(storedOutlines);
+          setLocalOutlines(outlines);
+          setHasOutlines(outlines.length > 0);
+        } catch (e) {
+          console.error('Failed to parse outlines');
+          setHasOutlines(false);
+        }
+      } else {
+        setHasOutlines(false);
+      }
+
+      if (storedDraft) {
+        setEditingDraft(storedDraft);
+      }
+
+      if (storedOptimization) {
+        try {
+          setOptimizationResult(JSON.parse(storedOptimization));
+        } catch (e) {
+          console.error('Failed to parse optimization result');
+        }
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handlePublish = () => {
+    if (!hasOutlines) {
+      alert('Please generate an outline first.');
+      return;
+    }
+
+    // Save current state
+    sessionStorage.setItem('finalizedContent', editingDraft);
+    sessionStorage.setItem('reviewComplete', 'true');
+
+    // Save outlines for restoration
+    if (localOutlines.length > 0) {
+      sessionStorage.setItem(
+        'generatedOutlines',
+        JSON.stringify(localOutlines)
+      );
+    }
+
+    if (optimizationResult) {
+      sessionStorage.setItem(
+        'optimizationResult',
+        JSON.stringify(optimizationResult)
+      );
+    }
+
+    router.push('/publishing');
+  };
+
+  return (
+    <Button size="lg" disabled={!hasOutlines} onClick={handlePublish}>
+      Complete & Publish
+      <ArrowRight className="ml-2 w-4 h-4" />
+    </Button>
+  );
+}
+
 export default function OutlinesPage() {
+  const router = useRouter();
+
   return (
     <Suspense
       fallback={
@@ -616,7 +1014,30 @@ export default function OutlinesPage() {
         </div>
       }
     >
-      <OutlinesPageContent />
+      <div className="container px-4 py-8 pb-32 mx-auto">
+        {/* Page Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Content Creation Studio
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            Create, optimize, and finalize your content with AI assistance.
+          </p>
+        </div>
+
+        <OutlinesPageContent />
+
+        {/* Fixed Footer Navigation */}
+        <div className="fixed right-0 bottom-0 left-0 z-20 p-4 border-t backdrop-blur-sm bg-background/80">
+          <div className="container flex gap-4 justify-between items-center mx-auto">
+            <Button variant="outline" onClick={() => router.back()}>
+              <ArrowLeft className="mr-2 w-4 h-4" />
+              Back to Briefs
+            </Button>
+            <OutlinesNavigationButton />
+          </div>
+        </div>
+      </div>
     </Suspense>
   );
 }

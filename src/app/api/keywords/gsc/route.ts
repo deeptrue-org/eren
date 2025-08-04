@@ -3,12 +3,12 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const websiteUrl = searchParams.get('url');
+  const url = searchParams.get('url');
   const periodUnit = searchParams.get('periodUnit') as any;
   const periodValue = searchParams.get('periodValue');
   const country = searchParams.get('country') || undefined;
 
-  if (!websiteUrl) {
+  if (!url) {
     return NextResponse.json(
       { error: 'Website URL is required' },
       { status: 400 }
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
   try {
     const keywords = await getGscKeywords(
-      websiteUrl,
+      url,
       periodUnit,
       periodValue ? parseInt(periodValue, 10) : 1,
       country

@@ -7,7 +7,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { ExternalLink } from 'lucide-react';
-import { getStatusIcon } from './optimization-utils';
+import { getStatusIcon } from './OptimizationUtils';
 
 interface FactCheckTabProps {
   factCheckData: OptimizationResult['factCheck'];

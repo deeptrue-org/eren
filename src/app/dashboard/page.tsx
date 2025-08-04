@@ -48,7 +48,7 @@ export default function DashboardPage() {
         <h3 className="mb-4 font-semibold">Content Generation Workflow</h3>
         <div className="space-y-4">
           <div className="flex gap-4 items-center">
-            <div className="flex justify-center items-center w-8 h-8 text-sm font-semibold text-black rounded-full bg-primary">
+            <div className="flex justify-center items-center w-8 h-8 text-sm font-semibold text-black rounded-full bg-secondary">
               1
             </div>
             <div>

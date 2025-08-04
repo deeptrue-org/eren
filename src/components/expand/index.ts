@@ -1,11 +1,11 @@
-export { SeedKeywordsList } from './seed-keywords-list';
-export { SettingsPanel } from './settings-panel';
-export { ActionButtons } from './action-buttons';
-export { KeywordResults } from './keyword-results';
-export { ErrorDisplay } from './error-display';
+export { SeedKeywordsList } from './SeedKeywordsList';
+export { SettingsPanel } from './SettingsPanel';
+export { ActionButtons } from './ActionButtons';
+export { KeywordResults } from './KeywordResults';
+export { ErrorDisplay } from './ErrorDisplay';
 
-export { ChromeSetupHelper } from './chrome-setup-helper';
-export { TrendChart } from './trend-chart';
-export { BrowserConnectionDialog } from './browser-connection-dialog';
+export { ChromeSetupHelper } from './ChromeSetupHelper';
+export { TrendChart } from './TrendChart';
+export { BrowserConnectionDialog } from './BrowserConnectionDialog';
 
 export type { ViewMode } from './types';

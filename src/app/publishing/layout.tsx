@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function PublishingLayout({
   children,

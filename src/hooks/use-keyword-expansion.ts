@@ -436,17 +436,24 @@ export const useKeywordExpansion = () => {
       }
 
       try {
+        const requestBody = {
+          seedKeywords,
+          countries: selectedCountries,
+          selectedApis,
+          useSerpApi,
+          timeRange,
+          browserInfo, // Send browser info on start
+        };
+
+        console.log(
+          '📤 Sending request to /api/keywords/expand with body:',
+          requestBody
+        );
+
         const response = await fetch('/api/keywords/expand', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            seedKeywords,
-            countries: selectedCountries,
-            selectedApis,
-            useSerpApi,
-            timeRange,
-            browserInfo, // Send browser info on start
-          }),
+          body: JSON.stringify(requestBody),
         });
 
         const data = await response.json();
@@ -558,6 +565,87 @@ export const useKeywordExpansion = () => {
     [sessionId]
   );
 
+  const onFetchSerpApiFullData = useCallback(async (keyword: string) => {
+    console.log(`Fetching SERP API full data for keyword: "${keyword}"`);
+
+    setExpandedKeywords((prev) =>
+      Object.keys(prev).reduce((acc, lang) => {
+        acc[lang] = prev[lang].map((k) =>
+          k.keyword === keyword
+            ? { ...k, isFetching: true, error: undefined }
+            : k
+        );
+        return acc;
+      }, {} as { [lang: string]: ExpandedKeyword[] })
+    );
+
+    try {
+      const response = await fetch(`/api/keywords/serpapi-full`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keyword,
+          lang: 'en', // You might want to get this from context
+          geo: 'WW', // You might want to get this from context
+          timeRange: 'today 3-m', // You might want to get this from context
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `SERP API full data fetch failed:`,
+          response.status,
+          errorText
+        );
+        throw new Error(
+          `Failed to fetch SERP API full data: ${response.status} ${errorText}`
+        );
+      }
+
+      const data = await response.json();
+      console.log(`Received SERP API full data for "${keyword}":`, data);
+
+      setExpandedKeywords((prev) =>
+        Object.keys(prev).reduce((acc, lang) => {
+          acc[lang] = prev[lang].map((k) =>
+            k.keyword === keyword
+              ? {
+                  ...k,
+                  interestOverTime: data.interestOverTime || k.interestOverTime,
+                  interestByRegion: data.interestByRegion || k.interestByRegion,
+                  relatedQueries: data.relatedQueries || k.relatedQueries,
+                  relatedTopics: data.relatedTopics || k.relatedTopics,
+                  timeRange: data.timeRange || k.timeRange,
+                  geo: data.geo || k.geo,
+                  isFetching: false,
+                  error: undefined,
+                }
+              : k
+          );
+          return acc;
+        }, {} as { [lang: string]: ExpandedKeyword[] })
+      );
+
+      console.log(`Successfully updated SERP API full data for "${keyword}"`);
+    } catch (error) {
+      console.error(
+        `Error fetching SERP API full data for "${keyword}":`,
+        error
+      );
+      setExpandedKeywords((prev) =>
+        Object.keys(prev).reduce((acc, lang) => {
+          acc[lang] = prev[lang].map((k) =>
+            k.keyword === keyword
+              ? { ...k, isFetching: false, error: (error as Error).message }
+              : k
+          );
+          return acc;
+        }, {} as { [lang: string]: ExpandedKeyword[] })
+      );
+    }
+  }, []);
+
   return {
     expandedKeywords,
     isExpanding,
@@ -568,5 +656,6 @@ export const useKeywordExpansion = () => {
     resetProgress,
     sessionId,
     onFetchTrends,
+    onFetchSerpApiFullData,
   };
 };

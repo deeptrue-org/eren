@@ -1,76 +1,28 @@
 import { NextResponse } from 'next/server';
-import * as cheerio from 'cheerio';
-import { getGscKeywords } from '@/lib/services/gsc-service'; // Import the centralized service
+import { notionService } from '../../../../lib/services/notion-service';
 
-// --- Helper: Get Keywords from URL ---
-async function getKeywordsFromUrl(url: string) {
-  if (!url) return [];
+// --- Helper: Get Keywords from Notion URL ---
+async function getKeywordsFromNotionUrl(url?: string) {
   try {
-    const fullUrl =
-      url.startsWith('http://') || url.startsWith('https://')
-        ? url
-        : `https://${url}`;
-    const response = await fetch(fullUrl);
-    if (!response.ok) return [];
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    // To avoid including code in keywords, remove script, style, pre, and code tags
-    $('script, style, pre, code, svg').remove();
-
-    const pageText = $('body').text();
-
-    // A more robust regex to extract "words" which are sequences of letters (in any language) and numbers.
-    // This will effectively ignore punctuation and special symbols, splitting text into meaningful chunks.
-    const words = pageText.toLowerCase().match(/[a-zA-Z0-9]+/g) || [];
-
-    const filteredWords = words.filter((w) => {
-      // Filter for words longer than 3 chars and that are not just numbers
-      return w.length > 3 && !/^\d+$/.test(w);
-    });
-
-    // Get unique keywords
-    const uniqueWords = [...new Set(filteredWords)];
-
-    return uniqueWords.map((k) => ({ keyword: k, source: 'URL' as const }));
+    // If no URL provided, will use default service info page
+    return await notionService.getKeywordsFromPage(url);
   } catch (error) {
-    console.error(`Error fetching URL ${url}:`, error);
+    console.error(`Error fetching Notion page ${url || 'default'}:`, error);
     return [];
   }
 }
 
 export async function POST(request: Request) {
-  const {
-    websiteUrl,
-    notionUrl,
-    manualKeywords,
-    excludeKeywords,
-    useContainsExclusion,
-    gscPeriodUnit,
-    gscPeriodValue,
-    gscCountry,
-  } = await request.json();
+  const { notionUrl, manualKeywords, excludeKeywords, useContainsExclusion } =
+    await request.json();
 
   let collectedKeywords: { keyword: string; source: string }[] = [];
 
-  // 1. Get keywords from URLs
-  const urlKeywords = await getKeywordsFromUrl(websiteUrl);
-  const notionKeywords = await getKeywordsFromUrl(notionUrl);
-  collectedKeywords.push(...urlKeywords, ...notionKeywords);
+  // 1. Get keywords from Notion URL
+  const notionKeywords = await getKeywordsFromNotionUrl(notionUrl);
+  collectedKeywords.push(...notionKeywords);
 
-  // Get keywords from GSC. If it fails, it will return an empty array.
-  if (websiteUrl) {
-    const countryForGsc = gscCountry === 'all' ? undefined : gscCountry;
-    const gscKeywordsData = await getGscKeywords(
-      websiteUrl,
-      gscPeriodUnit,
-      gscPeriodValue,
-      countryForGsc
-    ); // Using centralized service
-    collectedKeywords.push(...gscKeywordsData);
-  }
-
-  // 3. Add manual keywords
+  // 2. Add manual keywords
   if (manualKeywords) {
     const manualList = manualKeywords
       .split('\n')
@@ -80,7 +32,7 @@ export async function POST(request: Request) {
     collectedKeywords.push(...manualList);
   }
 
-  // 4. Filter out excluded keywords
+  // 3. Filter out excluded keywords
   if (excludeKeywords) {
     const excludeList = excludeKeywords
       .split('\n')
@@ -99,7 +51,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // 5. Remove duplicates
+  // 4. Remove duplicates
   const uniqueKeywords = collectedKeywords.filter(
     (value, index, self) =>
       value.keyword &&
