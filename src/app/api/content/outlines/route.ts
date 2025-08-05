@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ContentBrief } from '@/lib/types';
-import {
-  UnifiedContentService,
-} from '@/lib/unified-content-service';
+import { UnifiedContentService } from '@/lib/unified-content-service';
 import { checkRateLimit } from '@/lib/outline-generation/utils';
 
 // ============================================================================
@@ -30,7 +28,7 @@ async function processBrief(
 ): Promise<ArticleResult> {
   const unifiedService = new UnifiedContentService();
   const result = await unifiedService.generateArticle(brief, sendLog);
-  
+
   return {
     id: `article-${brief.id}`,
     briefId: brief.id,
