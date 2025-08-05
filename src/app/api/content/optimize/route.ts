@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { OptimizationResult } from '@/types/content';
+import { UnifiedContentService } from '@/lib/unified-content-service';
 
 // ============================================================================
 // RATE LIMITING & UTILITIES
@@ -237,7 +238,7 @@ ${content}
 
 export async function POST(req: Request) {
   try {
-    const { content, keyword } = await req.json();
+    const { content, keyword, briefId } = await req.json();
 
     if (!content || !keyword) {
       return NextResponse.json(
@@ -258,18 +259,31 @@ export async function POST(req: Request) {
       `🔍 Starting content optimization analysis for keyword: "${keyword}"`
     );
 
-    const optimizationResult = await analyzeContentWithWebSearch(
-      content,
-      keyword
-    );
+    let optimizationResult: OptimizationResult;
+
+    if (briefId) {
+      // Use unified approach with conversation context
+      const unifiedService = new UnifiedContentService();
+      optimizationResult = await unifiedService.optimizeContent(
+        content,
+        briefId
+      );
+      console.log('✅ Content analysis complete with context awareness');
+    } else {
+      // Fallback to legacy approach for backward compatibility
+      optimizationResult = await analyzeContentWithWebSearch(content, keyword);
+      console.log('✅ Content analysis complete (legacy mode)');
+    }
 
     console.log(
-      `✅ Content analysis complete. Overall score: ${optimizationResult.overallScore}`
+      `📊 Analysis complete. Overall score: ${optimizationResult.overallScore}`
     );
 
     return NextResponse.json(optimizationResult, {
       headers: {
-        'X-Analysis-Method': 'AI Content Analysis',
+        'X-Analysis-Method': briefId
+          ? 'Unified Context-Aware Analysis'
+          : 'Legacy Analysis',
         'X-Overall-Score': optimizationResult.overallScore.toString(),
       },
     });

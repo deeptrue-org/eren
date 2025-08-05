@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 
 import { ContentBrief } from '@/lib/types';
-import { ContentOutline } from '@/types/content';
+// ContentOutline type no longer needed - using ArticleResult
 import {
   ArrowLeft,
   ArrowRight,
@@ -34,7 +34,17 @@ import {
   AISuggestions,
   ImprovementPreviewDialog,
 } from '@/components/content';
-import { useOutlineGeneration, useOptimization } from '@/hooks';
+import { useArticleGeneration, useOptimization } from '@/hooks';
+
+// Define ArticleResult locally for now
+interface ArticleResult {
+  id: string;
+  briefId: string;
+  keyword: string;
+  title: string;
+  content: string;
+  wordCount: number;
+}
 
 // Markdown Preview Component
 const MarkdownPreview = ({ content }: { content: string }) => {
@@ -302,7 +312,7 @@ function OutlinesPageContent() {
   const [activeOutlineId, setActiveOutlineId] = useState<string>('');
   const [editingDraft, setEditingDraft] = useState<string>('');
   const [suggestedContent, setSuggestedContent] = useState<string | null>(null);
-  const [localOutlines, setLocalOutlines] = useState<ContentOutline[]>([]);
+  const [localArticles, setLocalArticles] = useState<ArticleResult[]>([]);
 
   const [hasChanges, setHasChanges] = useState<boolean>(false);
   const [autoImprovementRequest, setAutoImprovementRequest] = useState<{
@@ -321,12 +331,12 @@ function OutlinesPageContent() {
 
   // Custom hooks
   const {
-    outlines: hookOutlines,
+    articles: hookArticles,
     isLoading,
     error,
     logs,
-    generateOutlines,
-  } = useOutlineGeneration();
+    generateArticles,
+  } = useArticleGeneration();
   const { optimizationResult, isAnalyzing, analyzeContent } = useOptimization();
 
   // Load selected briefs from sessionStorage
@@ -477,38 +487,38 @@ function OutlinesPageContent() {
         existingOutlines.forEach((outline: any) => {
           localStorage.removeItem(`draft-${outline.id}`);
         });
-        setLocalOutlines([]);
+        setLocalArticles([]);
         setActiveOutlineId('');
         setEditingDraft('');
       } else {
-        console.log('✅ Restoring outlines from sessionStorage');
-        setLocalOutlines(existingOutlines);
+        console.log('✅ Restoring articles from sessionStorage');
+        setLocalArticles(existingOutlines);
       }
     }
 
     // Don't auto-generate - let user choose when to start
   }, []); // Empty dependency array to run only once on mount
 
-  // Sync hook outlines with local outlines
+  // Sync hook articles with local articles
   useEffect(() => {
-    if (hookOutlines.length > 0) {
-      setLocalOutlines(hookOutlines);
+    if (hookArticles.length > 0) {
+      setLocalArticles(hookArticles);
     }
-  }, [hookOutlines]);
+  }, [hookArticles]);
 
-  // Set active outline when outlines are loaded
+  // Set active article when articles are loaded
   useEffect(() => {
-    if (localOutlines.length > 0 && !activeOutlineId) {
-      setActiveOutlineId(localOutlines[0].id);
-      setEditingDraft(localOutlines[0].draft);
+    if (localArticles.length > 0 && !activeOutlineId) {
+      setActiveOutlineId(localArticles[0].id);
+      setEditingDraft(localArticles[0].content);
     }
-  }, [localOutlines, activeOutlineId]);
+  }, [localArticles, activeOutlineId]);
 
   const handleOutlineChange = (outlineId: string) => {
-    const outline = localOutlines.find((o) => o.id === outlineId);
-    if (outline) {
+    const article = localArticles.find((a) => a.id === outlineId);
+    if (article) {
       setActiveOutlineId(outlineId);
-      setEditingDraft(outline.draft);
+      setEditingDraft(article.content);
       setHasChanges(false);
     }
   };
@@ -526,9 +536,9 @@ function OutlinesPageContent() {
   };
 
   const handleStartOptimization = () => {
-    const activeOutline = localOutlines.find((o) => o.id === activeOutlineId);
-    if (activeOutline && editingDraft) {
-      analyzeContent(editingDraft, activeOutline.keyword);
+    const activeArticle = localArticles.find((a) => a.id === activeOutlineId);
+    if (activeArticle && editingDraft) {
+      analyzeContent(editingDraft, activeArticle.keyword);
     }
   };
 
@@ -541,8 +551,8 @@ function OutlinesPageContent() {
 
   // Comprehensive improvement handler
   const handleComprehensiveImprovement = async (optimizationResult: any) => {
-    const activeOutline = localOutlines.find((o) => o.id === activeOutlineId);
-    if (!activeOutline || !editingDraft) return;
+    const activeArticle = localArticles.find((a) => a.id === activeOutlineId);
+    if (!activeArticle || !editingDraft) return;
 
     setIsProcessingImprovement(true);
 
@@ -556,7 +566,7 @@ function OutlinesPageContent() {
           content: editingDraft,
           userFeedback: '', // Will be auto-generated
           chatHistory: [],
-          targetKeyword: activeOutline.keyword,
+          targetKeyword: activeArticle.keyword,
           optimizationContext: optimizationResult,
           isComprehensiveImprovement: true,
         }),
@@ -600,7 +610,7 @@ function OutlinesPageContent() {
     navigator.clipboard.writeText(editingDraft);
   };
 
-  const activeOutline = localOutlines.find((o) => o.id === activeOutlineId);
+  const activeArticle = localArticles.find((a) => a.id === activeOutlineId);
 
   if (isLoading) {
     return (
@@ -655,7 +665,7 @@ function OutlinesPageContent() {
     );
   }
 
-  if (localOutlines.length === 0 && !isLoading) {
+  if (localArticles.length === 0 && !isLoading) {
     return (
       <div className="container px-4 py-8 mx-auto">
         <Card className="text-center">
@@ -683,10 +693,10 @@ function OutlinesPageContent() {
                         sessionStorage.removeItem('activeOutline');
                         sessionStorage.removeItem('optimizationResult');
                         // Clear any existing drafts
-                        localOutlines.forEach((outline) => {
-                          localStorage.removeItem(`draft-${outline.id}`);
+                        localArticles.forEach((article) => {
+                          localStorage.removeItem(`draft-${article.id}`);
                         });
-                        generateOutlines([selectedBrief]);
+                        generateArticles([selectedBrief]);
                       }}
                       disabled={isLoading}
                     >
@@ -723,21 +733,21 @@ function OutlinesPageContent() {
 
   return (
     <div className="space-y-8">
-      {localOutlines.map((outline) => (
-        <div key={outline.id} className="mt-6">
+      {localArticles.map((article) => (
+        <div key={article.id} className="mt-6">
           {/* Active Content Info */}
-          {activeOutline && (
+          {activeArticle && (
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex gap-2 items-center">
                   <Target className="w-5 h-5" />
-                  {activeOutline.title}
+                  {activeArticle.title}
                 </CardTitle>
                 <CardDescription className="">
                   <div className="flex gap-2 justify-between">
                     <div>
-                      Keyword: {activeOutline.keyword} •{' '}
-                      {activeOutline.totalWordCount} words
+                      Keyword: {activeArticle.keyword} •{' '}
+                      {activeArticle.wordCount} words
                       {optimizationResult && (
                         <>
                           {' • Overall Score: '}
@@ -763,10 +773,10 @@ function OutlinesPageContent() {
                           sessionStorage.removeItem('activeOutline');
                           sessionStorage.removeItem('optimizationResult');
                           // Clear any existing drafts
-                          localOutlines.forEach((outline) => {
-                            localStorage.removeItem(`draft-${outline.id}`);
+                          localArticles.forEach((article) => {
+                            localStorage.removeItem(`draft-${article.id}`);
                           });
-                          generateOutlines([selectedBrief]);
+                          generateArticles([selectedBrief]);
                         }
                       }}
                       disabled={isLoading || !selectedBrief}
@@ -884,13 +894,14 @@ function OutlinesPageContent() {
                 onAnalyze={handleStartOptimization}
                 onRequestImprovement={handleRequestImprovement}
                 onComprehensiveImprovement={handleComprehensiveImprovement}
+                briefId={activeArticle?.briefId}
               />
 
               {/* AI Assistant & Review */}
-              {activeOutline && (
+              {activeArticle && (
                 <ReviewSection
                   content={editingDraft}
-                  keyword={activeOutline.keyword}
+                  keyword={activeArticle.keyword}
                   optimizationResult={optimizationResult || undefined}
                   onContentChange={handleContentChange}
                   onHasChanges={setHasChanges}
@@ -926,7 +937,7 @@ function OutlinesNavigationButton() {
   const router = useRouter();
   const [hasOutlines, setHasOutlines] = useState(false);
   const [editingDraft, setEditingDraft] = useState('');
-  const [localOutlines, setLocalOutlines] = useState<ContentOutline[]>([]);
+  const [localArticles, setLocalArticles] = useState<ArticleResult[]>([]);
   const [optimizationResult, setOptimizationResult] = useState<any>(null);
 
   useEffect(() => {
@@ -938,9 +949,9 @@ function OutlinesNavigationButton() {
 
       if (storedOutlines) {
         try {
-          const outlines = JSON.parse(storedOutlines);
-          setLocalOutlines(outlines);
-          setHasOutlines(outlines.length > 0);
+          const articles = JSON.parse(storedOutlines);
+          setLocalArticles(articles);
+          setHasOutlines(articles.length > 0);
         } catch (e) {
           console.error('Failed to parse outlines');
           setHasOutlines(false);
@@ -975,11 +986,11 @@ function OutlinesNavigationButton() {
     sessionStorage.setItem('finalizedContent', editingDraft);
     sessionStorage.setItem('reviewComplete', 'true');
 
-    // Save outlines for restoration
-    if (localOutlines.length > 0) {
+    // Save articles for restoration
+    if (localArticles.length > 0) {
       sessionStorage.setItem(
         'generatedOutlines',
-        JSON.stringify(localOutlines)
+        JSON.stringify(localArticles)
       );
     }
 

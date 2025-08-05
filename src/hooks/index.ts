@@ -1,4 +1,7 @@
-export { useOutlineGeneration } from './use-outline-generation';
+export {
+  useArticleGeneration,
+  type ArticleResult,
+} from './use-article-generation';
 export { useOptimization } from './use-optimization';
 export { useKeywordExpansion } from './use-keyword-expansion';
 export { useUrlManagement } from './use-url-management';

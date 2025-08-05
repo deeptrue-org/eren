@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import {
-  BriefGeneratorService,
   BriefGenerationRequest,
   checkRateLimit,
   validateBriefGenerationRequest,
   createLogMessage,
 } from '@/lib/brief-generation';
+import { UnifiedContentService } from '@/lib/unified-content-service';
 
 // ============================================================================
 // API HANDLERS
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       notionUrl,
     };
 
-    const briefGenerator = new BriefGeneratorService();
+    const unifiedService = new UnifiedContentService();
 
     // Handle streaming response
     if (stream) {
@@ -61,7 +61,12 @@ export async function POST(req: Request) {
       } keywords: ${keywords.join(', ')}`
     );
 
-    const results = await briefGenerator.generateBriefs(briefRequest);
+    const results = await unifiedService.generateBriefs({
+      keywords: briefRequest.keywords,
+      keywordExpansionData: briefRequest.keywordExpansionData,
+      generationMode: briefRequest.generationMode,
+      notionUrl: briefRequest.notionUrl,
+    });
 
     console.log(
       `🎉 Brief generation complete. Keywords processed: ${
@@ -141,9 +146,14 @@ function handleStreamingResponse(briefRequest: BriefGenerationRequest) {
             } keywords: ${briefRequest.keywords.join(', ')}`
           );
 
-          const briefGenerator = new BriefGeneratorService();
-          const results = await briefGenerator.generateBriefs(
-            briefRequest,
+          const unifiedService = new UnifiedContentService();
+          const results = await unifiedService.generateBriefs(
+            {
+              keywords: briefRequest.keywords,
+              keywordExpansionData: briefRequest.keywordExpansionData,
+              generationMode: briefRequest.generationMode,
+              notionUrl: briefRequest.notionUrl,
+            },
             sendLog
           );
 

@@ -25,9 +25,10 @@ import { ReadabilityTab } from './ReadabilityTab';
 interface OptimizationPanelProps {
   optimizationResult: OptimizationResult | null;
   isAnalyzing: boolean;
-  onAnalyze: () => void;
+  onAnalyze: (briefId?: string) => void;
   onRequestImprovement?: (improvementType: string, details: string) => void;
   onComprehensiveImprovement?: (optimizationResult: OptimizationResult) => void;
+  briefId?: string; // Optional briefId for context-aware optimization
 }
 
 export function OptimizationPanel({
@@ -36,6 +37,7 @@ export function OptimizationPanel({
   onAnalyze,
   onRequestImprovement,
   onComprehensiveImprovement,
+  briefId,
 }: OptimizationPanelProps) {
   // 개선이 필요한지 판단하는 함수
   const hasImprovementNeeded = (): boolean => {
@@ -160,7 +162,11 @@ export function OptimizationPanel({
 
   const renderAnalysisButton = () => (
     <div className="flex flex-col gap-3 m-6">
-      <Button className="w-full" onClick={onAnalyze} disabled={isAnalyzing}>
+      <Button
+        className="w-full"
+        onClick={() => onAnalyze(briefId)}
+        disabled={isAnalyzing}
+      >
         {isAnalyzing ? (
           <>
             <Loader2 className="mr-2 w-4 h-4 animate-spin" />
@@ -186,7 +192,7 @@ export function OptimizationPanel({
           onClick={handleComprehensiveImprovement}
         >
           <Sparkles className="mr-2 w-4 h-4" />
-          전체 콘텐츠 개선하기
+          Improve Content
         </Button>
       )}
     </div>
@@ -204,6 +210,8 @@ export function OptimizationPanel({
             <CardDescription>
               {isAnalyzing
                 ? 'AI is analyzing your content...'
+                : briefId
+                ? 'Context-aware analysis for SEO, fact-checking, and readability'
                 : 'Comprehensive analysis for SEO, fact-checking, and readability'}
             </CardDescription>
           </div>

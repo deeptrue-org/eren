@@ -79,7 +79,7 @@ export function ImprovementPreviewDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex gap-2 items-center">
             <Sparkles className="w-5 h-5 text-purple-600" />
             Content Improvement Preview
           </DialogTitle>
@@ -89,39 +89,39 @@ export function ImprovementPreviewDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex overflow-y-auto flex-col flex-1 min-h-0">
           <Tabs
             value={activeTab}
             onValueChange={(value) =>
               setActiveTab(value as 'preview' | 'comparison')
             }
-            className="flex-1 flex flex-col"
+            className="flex flex-col flex-1"
           >
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="preview" className="flex items-center gap-2">
+            <TabsList className="grid grid-cols-2 mb-4 w-full">
+              <TabsTrigger value="preview" className="flex gap-2 items-center">
                 <Eye className="w-4 h-4" />
                 Improved Content
               </TabsTrigger>
               <TabsTrigger
                 value="comparison"
-                className="flex items-center gap-2"
+                className="flex gap-2 items-center"
               >
                 <FileText className="w-4 h-4" />
                 Side-by-Side Comparison
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="preview" className="flex-1 flex flex-col">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1">
+            <TabsContent value="preview" className="flex flex-col flex-1">
+              <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
                 {/* Improved Content */}
-                <div className="lg:col-span-2 flex flex-col">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <div className="flex flex-col lg:col-span-2">
+                  <h3 className="flex gap-2 items-center mb-3 text-lg font-semibold">
                     <Sparkles className="w-5 h-5 text-green-600" />
                     Improved Content
                   </h3>
-                  <div className="flex-1 h-96 border rounded-lg p-4 bg-green-50 overflow-y-auto">
-                    <div className="prose prose-sm max-w-none">
-                      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                  <div className="overflow-y-auto flex-1 p-4 h-96 bg-green-50 rounded-lg border">
+                    <div className="max-w-none prose prose-sm">
+                      <pre className="font-sans text-sm leading-relaxed whitespace-pre-wrap">
                         {improvedContent}
                       </pre>
                     </div>
@@ -130,16 +130,16 @@ export function ImprovementPreviewDialog({
 
                 {/* Improvement Summary */}
                 <div className="flex flex-col">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <h3 className="flex gap-2 items-center mb-3 text-lg font-semibold">
                     <CheckCircle className="w-5 h-5 text-blue-600" />
                     Improvements Made
                   </h3>
-                  <div className="flex-1 h-96 overflow-y-auto">
+                  <div className="overflow-y-auto flex-1 h-96">
                     <div className="space-y-2">
                       {improvementSummary.map((improvement, index) => (
                         <div
                           key={index}
-                          className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200"
+                          className="flex gap-2 items-start p-3 bg-blue-50 rounded-lg border border-blue-200"
                         >
                           <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                           <span className="text-sm text-blue-800">
@@ -154,15 +154,15 @@ export function ImprovementPreviewDialog({
             </TabsContent>
 
             <TabsContent value="comparison" className="flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
+              <div className="grid grid-cols-1 gap-4 h-full md:grid-cols-2">
                 {/* Original Content */}
                 <div className="flex flex-col">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <h3 className="flex gap-2 items-center mb-3 text-lg font-semibold">
                     <FileText className="w-5 h-5 text-red-600" />
                     Original Content
                     <Badge variant="secondary">Before</Badge>
                   </h3>
-                  <div className="flex-1 h-96 border rounded-lg p-4 overflow-y-auto">
+                  <div className="overflow-y-auto flex-1 p-4 h-96 rounded-lg border">
                     <div className="space-y-1">
                       {renderContentWithHighlights(originalContent, true)}
                     </div>
@@ -171,12 +171,12 @@ export function ImprovementPreviewDialog({
 
                 {/* Improved Content */}
                 <div className="flex flex-col">
-                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <h3 className="flex gap-2 items-center mb-3 text-lg font-semibold">
                     <Sparkles className="w-5 h-5 text-green-600" />
                     Improved Content
                     <Badge variant="default">After</Badge>
                   </h3>
-                  <div className="flex-1 h-96 border rounded-lg p-4 overflow-y-auto">
+                  <div className="overflow-y-auto flex-1 p-4 h-96 rounded-lg border">
                     <div className="space-y-1">
                       {renderContentWithHighlights(improvedContent, false)}
                     </div>
@@ -187,8 +187,8 @@ export function ImprovementPreviewDialog({
           </Tabs>
 
           {/* Action Buttons */}
-          <div className="flex justify-between items-center mt-6 pt-4 border-t flex-shrink-0">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex flex-shrink-0 justify-between items-center pt-4 mt-6 border-t">
+            <div className="flex gap-2 items-center text-sm text-muted-foreground">
               <ArrowRight className="w-4 h-4" />
               <span>This will replace your current content</span>
             </div>

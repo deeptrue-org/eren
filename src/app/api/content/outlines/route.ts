@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { ContentBrief } from '@/lib/types';
 import {
-  OutlineGeneratorService,
-  OutlineSection,
-  ContentOutline,
-} from '@/lib/outline-generation/outline-generator';
+  UnifiedContentService,
+} from '@/lib/unified-content-service';
 import { checkRateLimit } from '@/lib/outline-generation/utils';
 
 // ============================================================================
@@ -17,12 +15,30 @@ const requestTracker = new Map<string, { count: number; resetTime: number }>();
 // BRIEF PROCESSING LOGIC
 // ============================================================================
 
+export interface ArticleResult {
+  id: string;
+  briefId: string;
+  keyword: string;
+  title: string;
+  content: string;
+  wordCount: number;
+}
+
 async function processBrief(
   brief: ContentBrief,
   sendLog?: (message: string) => void
-): Promise<ContentOutline> {
-  const outlineGenerator = new OutlineGeneratorService();
-  return await outlineGenerator.generateOutline(brief, sendLog);
+): Promise<ArticleResult> {
+  const unifiedService = new UnifiedContentService();
+  const result = await unifiedService.generateArticle(brief, sendLog);
+  
+  return {
+    id: `article-${brief.id}`,
+    briefId: brief.id,
+    keyword: brief.keyword,
+    title: result.title,
+    content: result.content,
+    wordCount: result.wordCount,
+  };
 }
 
 // ============================================================================
@@ -76,7 +92,7 @@ export async function POST(req: Request) {
           const processWithLogs = async () => {
             try {
               sendLog(
-                `🚀 Starting two-stage outline generation for ${selectedBriefs.length} briefs.`
+                `🚀 Starting article generation for ${selectedBriefs.length} briefs.`
               );
 
               const results = await Promise.all(
@@ -87,23 +103,19 @@ export async function POST(req: Request) {
                     sendLog(errorMessage);
                     // Return a fallback or error structure if a single brief fails
                     return {
-                      id: `outline-${brief.id}`,
+                      id: `article-${brief.id}`,
                       briefId: brief.id,
                       keyword: brief.keyword,
                       title: `Failed to process: ${brief.topic}`,
-                      totalWordCount: 0,
-                      sections: [],
-                      draft: `Error: ${error.message}`,
-                      internalNotes: [
-                        `Failed to generate content for ${brief.keyword}. Please try again.`,
-                      ],
+                      content: `Error: ${error.message}\n\nFailed to generate content for ${brief.keyword}. Please try again.`,
+                      wordCount: 0,
                     };
                   })
                 )
               );
 
               sendLog(
-                `🎉 Two-stage outline generation complete: ${results.length} outlines processed.`
+                `🎉 Article generation complete: ${results.length} articles processed.`
               );
 
               // Send final results
@@ -128,7 +140,7 @@ export async function POST(req: Request) {
                 }
               }
             } catch (error: any) {
-              sendLog(`❌ Error in outline generation: ${error.message}`);
+              sendLog(`❌ Error in article generation: ${error.message}`);
               try {
                 if (controller.desiredSize !== null) {
                   const errorData = `data: ${JSON.stringify({
@@ -167,7 +179,7 @@ export async function POST(req: Request) {
 
     // Regular non-streaming response
     console.log(
-      `🚀 Starting two-stage outline generation for ${selectedBriefs.length} briefs.`
+      `🚀 Starting article generation for ${selectedBriefs.length} briefs.`
     );
 
     const results = await Promise.all(
@@ -179,37 +191,32 @@ export async function POST(req: Request) {
           );
           // Return a fallback or error structure if a single brief fails
           return {
-            id: `outline-${brief.id}`,
+            id: `article-${brief.id}`,
             briefId: brief.id,
             keyword: brief.keyword,
             title: `Failed to process: ${brief.topic}`,
-            totalWordCount: 0,
-            sections: [],
-            draft: `Error: ${error.message}`,
-            internalNotes: [
-              `Failed to generate content for ${brief.keyword}. Please try again.`,
-            ],
+            content: `Error: ${error.message}\n\nFailed to generate content for ${brief.keyword}. Please try again.`,
+            wordCount: 0,
           };
         })
       )
     );
 
     console.log(
-      `🎉 Two-stage outline generation complete: ${results.length} outlines processed.`
+      `🎉 Article generation complete: ${results.length} articles processed.`
     );
 
     return NextResponse.json(results, {
       headers: {
-        'X-Generated-Outlines': results.length.toString(),
-        'X-Generation-Method': 'Two-Stage AI (Search + Write)',
-        'X-Research-Model': 'gpt-4o-search-preview',
-        'X-Writing-Model': 'gpt-4o',
+        'X-Generated-Articles': results.length.toString(),
+        'X-Generation-Method': 'Direct Article Generation (Search + Write)',
+        'X-Model': 'gpt-4o-search-preview',
       },
     });
   } catch (error: any) {
-    console.error('❌ Error in outline generation endpoint:', error);
+    console.error('❌ Error in article generation endpoint:', error);
     return NextResponse.json(
-      { error: 'Failed to generate content outlines.', details: error.message },
+      { error: 'Failed to generate articles.', details: error.message },
       { status: 500 }
     );
   }
@@ -223,13 +230,14 @@ export async function GET() {
     services: {
       openai: hasOpenAI ? 'configured' : 'not configured',
       webSearch: hasOpenAI ? 'enabled' : 'disabled',
-      contentGeneration: hasOpenAI ? 'enabled' : 'disabled',
+      articleGeneration: hasOpenAI ? 'enabled' : 'disabled',
     },
     features: [
-      'Web research with gpt-4o-search-preview',
-      'Content generation with gpt-4o',
-      'Real-time data collection',
-      'Efficient two-stage processing',
+      'Direct article generation with web research',
+      'Human-like professional writing tone',
+      'Real-time data collection and citations',
+      'Practical, actionable content focus',
+      'No JSON formatting - plain text articles',
     ],
     timestamp: new Date().toISOString(),
   });
