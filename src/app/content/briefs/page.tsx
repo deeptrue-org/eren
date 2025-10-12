@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { ContentBrief } from '@/lib/types';
 import { ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import {
@@ -289,7 +291,6 @@ function BriefsPageContent() {
 
 export default function BriefsPage() {
   const router = useRouter();
-  const [selectedBriefs, setSelectedBriefs] = useState<ContentBrief[]>([]);
 
   // Load selected briefs from state
   useEffect(() => {
@@ -315,7 +316,7 @@ export default function BriefsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Content Briefs</h1>
           <p className="mt-2 text-muted-foreground">
             Step 2: Select target audiences, search intents, and topics to
-            generate content outlines.
+            generate complete articles.
           </p>
         </div>
 
@@ -365,20 +366,20 @@ function BriefsNavigationButton() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleCreateOutlines = () => {
+  const handleCreateArticles = () => {
     if (!selectedBrief) {
       alert('Please select a content brief.');
       return;
     }
 
-    router.push('/content/outlines');
+    router.push('/content/articles');
   };
 
   return (
     <Button
       size="lg"
       disabled={!selectedBrief || isBriefsLoading}
-      onClick={handleCreateOutlines}
+      onClick={handleCreateArticles}
     >
       {isBriefsLoading ? (
         <>
@@ -387,7 +388,7 @@ function BriefsNavigationButton() {
         </>
       ) : (
         <>
-          Next: Create Outlines {selectedBrief ? '(1 selected)' : ''}
+          Next: Create Articles {selectedBrief ? '(1 selected)' : ''}
           <ArrowRight className="ml-2 w-4 h-4" />
         </>
       )}

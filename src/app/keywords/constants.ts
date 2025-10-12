@@ -1,7 +1,7 @@
 import { TrendingUp, TrendingDown, Minus, Sparkles } from 'lucide-react';
 import type { Country, TrendType } from '@/types/keywords';
 
-export const MAX_KEYWORDS = 100;
+export const MAX_KEYWORDS = 10;
 export const RECENT_URLS_LIMIT = 5;
 
 export const TREND_ORDER = {

@@ -260,7 +260,7 @@ Guidelines:
               },
             ],
             temperature: 0.7,
-            max_tokens: 1500,
+            max_completion_tokens: 1500,
           }),
         });
 

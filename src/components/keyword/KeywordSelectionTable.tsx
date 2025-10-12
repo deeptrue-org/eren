@@ -32,7 +32,8 @@ import type {
   SortConfig,
   SortableKey,
   TrendType,
-} from '../../app/keywords/types';
+  GscPeriodUnit,
+} from '@/types/keywords';
 import { MAX_KEYWORDS, TREND_CONFIGS } from '../../app/keywords/constants';
 
 interface KeywordSelectionTableProps {
@@ -68,6 +69,14 @@ interface KeywordSelectionTableProps {
     >
   ) => void;
   getKeywordTrend: (k: CollectedKeyword) => string;
+  // Summary inputs
+  websiteUrl?: string;
+  gscPeriodUnit?: GscPeriodUnit;
+  gscPeriodValue?: number;
+  gscCountry?: string;
+  manualKeywordsCount?: number;
+  excludeKeywordsCount?: number;
+  useContainsExclusion?: boolean;
 }
 
 const SortIndicator = ({
@@ -130,7 +139,54 @@ export const KeywordSelectionTable = ({
   sortedKeywords,
   handleSelectRow,
   getKeywordTrend,
+  websiteUrl,
+  gscPeriodUnit = 'month',
+  gscPeriodValue = 1,
+  gscCountry = 'all',
+  manualKeywordsCount = 0,
+  excludeKeywordsCount = 0,
+  useContainsExclusion = false,
 }: KeywordSelectionTableProps) => {
+  const hasGscData = collectedKeywords.some((k) => k.source === 'GSC');
+
+  const formatPeriod = () => {
+    const now = new Date();
+    const end = now;
+    const start = new Date(now);
+    if (gscPeriodUnit === 'day') {
+      start.setDate(now.getDate() - (gscPeriodValue || 1) + 1);
+      return `${start.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })} – ${end.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })}`;
+    }
+    if (gscPeriodUnit === 'year') {
+      start.setFullYear(now.getFullYear() - (gscPeriodValue || 1));
+      return `${start.toLocaleDateString('en-US', {
+        month: 'short',
+        year: 'numeric',
+      })} – ${end.toLocaleDateString('en-US', {
+        month: 'short',
+        year: 'numeric',
+      })}`;
+    }
+    // month (default)
+    start.setMonth(now.getMonth() - (gscPeriodValue || 1));
+    start.setDate(1);
+    return `${start.toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric',
+    })} – ${end.toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric',
+    })}`;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -145,6 +201,55 @@ export const KeywordSelectionTable = ({
               </span>
             )}
           </CardDescription>
+          {hasGscData && (
+            <div className="mt-3">
+              <div className="mb-1 text-sm font-medium text-foreground">
+                Data Summary
+              </div>
+              <ul className="grid grid-cols-1 gap-y-1 gap-x-6 p-0 text-sm list-none sm:grid-cols-2 text-muted-foreground">
+                <li>
+                  <span className="font-medium text-foreground">Source:</span>{' '}
+                  Google Search Console
+                </li>
+                {websiteUrl && (
+                  <li>
+                    <span className="font-medium text-foreground">
+                      Property:
+                    </span>{' '}
+                    {websiteUrl}
+                  </li>
+                )}
+                <li>
+                  <span className="font-medium text-foreground">Period:</span>{' '}
+                  {formatPeriod()}
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">Country:</span>{' '}
+                  {gscCountry === 'all' ? 'All' : gscCountry.toUpperCase()}
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">
+                    Manual Seeds:
+                  </span>{' '}
+                  {manualKeywordsCount > 0
+                    ? `Included (${manualKeywordsCount})`
+                    : 'Not included'}
+                </li>
+                <li>
+                  <span className="font-medium text-foreground">
+                    Exclude Keywords:
+                  </span>{' '}
+                  {excludeKeywordsCount > 0
+                    ? `Applied (${excludeKeywordsCount})${
+                        useContainsExclusion
+                          ? ' · Contains match'
+                          : ' · Exact match'
+                      }`
+                    : 'Not applied'}
+                </li>
+              </ul>
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>

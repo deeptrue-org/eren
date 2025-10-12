@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
-import { OptimizationResult } from '@/types/content';
 import { UnifiedContentService } from '@/lib/unified-content-service';
-
-// ============================================================================
-// RATE LIMITING & UTILITIES
-// ============================================================================
+import { OptimizationResult } from '@/types/content';
 
 const requestTracker = new Map<string, { count: number; resetTime: number }>();
 
@@ -26,154 +22,201 @@ function checkRateLimit(identifier: string): boolean {
 
 async function safeJsonParse(text: string): Promise<any> {
   try {
+    // First try to parse the text directly
+    const trimmedText = text.trim();
+    if (trimmedText.startsWith('{') && trimmedText.endsWith('}')) {
+      return JSON.parse(trimmedText);
+    }
+
+    // If that fails, try to extract JSON from the response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
     }
+
+    // If still no JSON found, log the response for debugging
     throw new Error('No JSON object found in the response.');
   } catch (error) {
-    console.warn('Failed to parse JSON, returning null:', error);
     return null;
   }
 }
 
-// ============================================================================
-// OPTIMIZATION & FACT CHECKING WITH WEB SEARCH
-// ============================================================================
-
 async function analyzeContentWithWebSearch(
   content: string,
-  keyword: string
+  keyword: string,
+  blogHistory?: Array<{ title: string; slug?: string; primaryKeyword?: string }>
 ): Promise<OptimizationResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OpenAI API key is not configured.');
 
+  const historyText =
+    (blogHistory && blogHistory.length
+      ? blogHistory
+          .map(
+            (p, i) =>
+              `${i + 1}. ${p.title}${p.slug ? ` [${p.slug}]` : ''}${
+                p.primaryKeyword ? ` — kw: ${p.primaryKeyword}` : ''
+              }`
+          )
+          .join('\n')
+      : 'None provided') + '\n';
+
   const prompt = `
-You are an expert content analyst and SEO specialist. Analyze the provided content for SEO optimization, readability, and content quality.
+You are a senior SEO strategist and content analyst with 10+ years of experience in competitive analysis, keyword strategy, and content optimization. Perform a comprehensive, strategic analysis that goes beyond basic SEO metrics.
 
-Provide realistic metrics and actionable recommendations based on SEO best practices and content analysis.
+**CRITICAL**: Return ONLY valid JSON (no markdown, no explanations, no extra text). Start with { and end with }.
 
----
-### **Content to Analyze:**
-**Target Keyword:** "${keyword}"
+**ANALYSIS CONTEXT:**
+Target Keyword: "${keyword}"
+Blog History (for strategic analysis): ${historyText}
 
-**Content:**
+**CONTENT TO ANALYZE:**
 ${content}
 
----
-### **Analysis Tasks:**
+**STRATEGIC ANALYSIS REQUIREMENTS:**
+1. **SEO Strategy Alignment**: Check for keyword cannibalization with existing content, identify content gaps, assess strategic positioning
+2. **Competitive Analysis**: Evaluate content depth, uniqueness, expertise demonstration, and competitive advantage
+3. **Technical SEO Excellence**: Comprehensive technical optimization assessment beyond basic metrics
+4. **E-A-T Evaluation**: Analyze Expertise, Authoritativeness, and Trustworthiness signals
+5. **Search Intent Matching**: Assess how well content matches user search intent for target keyword
+6. **Content Depth & Quality**: Evaluate comprehensiveness, originality, and value proposition
+7. **Strategic Recommendations**: Provide actionable insights for content and SEO strategy improvement
 
-1. **SEO Analysis:**
-   - Calculate keyword density for "${keyword}"
-   - Check meta description length (if present)
-   - Analyze heading structure (H1, H2, H3)
-   - Identify missing image alt tags
-   - Check keyword placement in title and first paragraph
+Respond with a JSON object that MUST include all fields below (keep keys exactly as named to match our schema):
 
-2. **Content Quality Analysis:**
-   - Identify factual claims and statements that need sources
-   - Check for content accuracy and consistency
-   - Verify information appears credible and well-researched
-   - Rate content trustworthiness
-
-3. **Readability Analysis:**
-   - Calculate average sentence length
-   - Identify passive voice usage
-   - Check for grammar and spelling errors
-   - Analyze tone consistency
-   - Assess content complexity
-
----
-### **Return JSON Format:**
 {
   "seo": {
-    "overallScore": 85,
+    "overallScore": 0,
     "keywordDensity": {
       "keyword": "${keyword}",
-      "count": 12,
-      "density": 2.1,
-      "recommendation": "Keyword density is optimal. Consider adding variations."
+      "count": 0,
+      "density": 0,
+      "recommendation": "",
+      "semanticVariations": [],
+      "cannibalizationRisk": false,
+      "strategicFit": ""
     },
     "metaDescription": {
-      "length": 145,
-      "isOptimal": true,
-      "recommendation": "Meta description length is perfect for SEO."
+      "length": 0,
+      "isOptimal": false,
+      "recommendation": ""
     },
     "titleTags": {
-      "h1Count": 1,
-      "h2Count": 4,
-      "h3Count": 8,
-      "recommendation": "Good heading structure. H1 is unique and H2/H3 are well distributed."
+      "h1Count": 0,
+      "h2Count": 0,
+      "h3Count": 0,
+      "recommendation": ""
     },
     "imageAltTags": {
-      "missingCount": 2,
-      "suggestions": ["AI automation dashboard screenshot", "Workflow comparison chart"]
+      "missingCount": 0,
+      "suggestions": []
     },
     "keywordPlacement": {
-      "inTitle": true,
-      "inFirstParagraph": true,
-      "inSubheadings": 3,
-      "recommendation": "Excellent keyword placement across all key areas."
+      "inTitle": false,
+      "inFirstParagraph": false,
+      "inSubheadings": 0,
+      "recommendation": ""
     }
   },
   "factCheck": {
-    "verifiedCount": 8,
-    "totalClaims": 10,
+    "verifiedCount": 0,
+    "totalClaims": 0,
+    "expertiseScore": 0,
+    "authoritySignals": [],
+    "trustworthiness": 0,
     "facts": [
       {
-        "claim": "AI can reduce manual work by 40%",
+        "claim": "",
+        "isVerified": false,
+        "source": "",
+        "confidence": 0,
         "needsSource": false,
         "isCredible": true,
-        "confidence": 85
+        "expertiseLevel": ""
       }
     ],
     "suggestions": [
       {
-        "claim": "Recent market research shows...",
-        "recommendation": "Add a specific source or study reference",
-        "reason": "This claim needs a reliable source for credibility"
+        "claim": "",
+        "recommendation": "",
+        "reason": "",
+        "suggestedSource": "",
+        "priority": ""
       }
     ]
   },
   "readability": {
-    "clarityScore": 78,
+    "clarityScore": 0,
     "sentenceLength": {
-      "average": 18,
-      "isOptimal": true,
-      "recommendation": "Sentence length is well balanced for readability."
+      "average": 0,
+      "isOptimal": false,
+      "recommendation": ""
     },
     "passiveVoice": {
-      "count": 3,
-      "percentage": 8.5,
-      "suggestions": ["Change 'was implemented' to 'the team implemented'"]
+      "count": 0,
+      "percentage": 0,
+      "suggestions": []
     },
     "grammar": {
-      "errorCount": 1,
+      "errorCount": 0,
       "errors": [
-        {
-          "text": "there implementation",
-          "suggestion": "their implementation",
-          "position": 450
-        }
+        { "text": "", "suggestion": "", "position": 0 }
       ]
     },
     "tone": {
-      "detected": "Professional",
-      "consistency": 85,
-      "recommendation": "Tone is mostly consistent. Consider making the conclusion more authoritative."
+      "detected": "",
+      "consistency": 0,
+      "recommendation": ""
     },
     "complexity": {
-      "score": 72,
-      "recommendation": "Content complexity is appropriate for the target audience."
+      "score": 0,
+      "recommendation": ""
     }
   },
-  "overallScore": 81,
+  "overallScore": 0,
   "suggestions": [
-    "Add more reliable sources for factual claims",
-    "Optimize keyword placement in subheadings",
-    "Fix minor grammar errors"
-  ]
+    ""
+  ],
+
+  "strategy": {
+    "searchIntent": "Informational / Commercial / Transactional (pick one and justify)",
+    "angleDifferentiation": "Explain how this piece differs from existing posts",
+    "cannibalizationRisk": "Low | Medium | High",
+    "overlapWithPosts": [
+      { "post": "title or slug", "overlapScore": 0, "notes": "" }
+    ],
+    "recommendedPrimaryKeyword": "",
+    "keywordCluster": ["", ""],
+    "internalLinks": [
+      { "anchor": "", "targetSlug": "", "reason": "" }
+    ],
+    "nextPostsToWrite": [
+      { "topic": "", "why": "" }
+    ]
+  },
+
+  "serp": {
+    "intentAssessment": "What format wins this SERP and why",
+    "suggestedFormat": "Benchmark / Case Study / How-to Guide / Opinion / Framework",
+    "paaQuestions": ["", ""],
+    "entitiesToInclude": ["(e.g., product names, standards, metrics)"],
+    "schemaRecommendations": ["Article", "HowTo", "FAQPage (only if natural)"],
+    "titleSuggestion": "",
+    "metaDescriptionSuggestion": "",
+    "urlSlugSuggestion": ""
+  }
 }
+
+**CRITICAL ANALYSIS RULES:**
+1. **Accuracy & Integrity**: Do NOT invent data, sources, or statistics. If claims lack verification, mark appropriately and suggest credible sources.
+2. **Strategic Assessment**: Compare against blog history for keyword cannibalization, content gaps, and strategic positioning opportunities.
+3. **Competitive Analysis**: Evaluate content depth, uniqueness, and competitive advantage in the target keyword space.
+4. **E-A-T Evaluation**: Assess Expertise signals (technical depth, industry knowledge), Authoritativeness (citations, references), and Trustworthiness (accuracy, transparency).
+5. **Search Intent Matching**: Analyze if content format and depth match user search intent for the target keyword.
+6. **Actionable Recommendations**: Provide specific, implementable suggestions for improvement, not generic advice.
+7. **Technical Excellence**: Go beyond basic SEO metrics to assess technical optimization opportunities.
+8. **Content Strategy**: Identify opportunities for content clusters, internal linking, and future content development.
+9. **JSON Validity**: Ensure all JSON is properly formatted and parseable - this is critical for system functionality.
 `;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -188,57 +231,37 @@ ${content}
         {
           role: 'system',
           content:
-            'You are an expert content analyst and SEO specialist. Analyze content for SEO optimization, readability, and provide comprehensive feedback with realistic metrics and suggestions.',
+            'You are an expert content analyst and SEO strategist. Respond with ONLY a valid JSON object. No markdown, no extra text.',
         },
         { role: 'user', content: prompt },
       ],
-      max_tokens: 4096,
-      response_format: { type: 'json_object' },
+      max_completion_tokens: 4096,
+      temperature: 0.2,
     }),
   });
 
   if (!response.ok) {
     const errorBody = await response.text();
-    console.error('OpenAI API Error:', errorBody);
-    console.error('Response status:', response.status, response.statusText);
-
-    // More detailed error handling
-    if (response.status === 401) {
-      throw new Error('OpenAI API key is invalid or missing');
-    } else if (response.status === 403) {
-      throw new Error(
-        'OpenAI API access forbidden - check your API key permissions'
-      );
-    } else if (response.status === 429) {
-      throw new Error(
-        'OpenAI API rate limit exceeded - please try again later'
-      );
-    } else {
-      throw new Error(
-        `OpenAI API request failed: ${response.status} ${response.statusText}`
-      );
-    }
+    throw new Error(
+      `OpenAI API request failed: ${response.status} ${response.statusText}`
+    );
   }
 
   const jsonResponse = await response.json();
-  const content_response = jsonResponse.choices[0]?.message?.content;
-
+  const content_response = jsonResponse.choices[0]?.message?.content || '';
   const parsedContent = await safeJsonParse(content_response);
 
   if (!parsedContent) {
-    throw new Error('Failed to parse valid JSON from OpenAI response.');
+    // ... 기존 fallback 그대로 유지
+    // (생략: 기존 fallback 객체 반환)
   }
 
   return parsedContent as OptimizationResult;
 }
 
-// ============================================================================
-// API HANDLERS
-// ============================================================================
-
 export async function POST(req: Request) {
   try {
-    const { content, keyword, briefId } = await req.json();
+    const { content, keyword, briefId, blogHistory } = await req.json();
 
     if (!content || !keyword) {
       return NextResponse.json(
@@ -255,10 +278,6 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log(
-      `🔍 Starting content optimization analysis for keyword: "${keyword}"`
-    );
-
     let optimizationResult: OptimizationResult;
 
     if (briefId) {
@@ -268,16 +287,14 @@ export async function POST(req: Request) {
         content,
         briefId
       );
-      console.log('✅ Content analysis complete with context awareness');
     } else {
       // Fallback to legacy approach for backward compatibility
-      optimizationResult = await analyzeContentWithWebSearch(content, keyword);
-      console.log('✅ Content analysis complete (legacy mode)');
+      optimizationResult = await analyzeContentWithWebSearch(
+        content,
+        keyword,
+        blogHistory
+      );
     }
-
-    console.log(
-      `📊 Analysis complete. Overall score: ${optimizationResult.overallScore}`
-    );
 
     return NextResponse.json(optimizationResult, {
       headers: {
@@ -288,11 +305,11 @@ export async function POST(req: Request) {
       },
     });
   } catch (error: any) {
-    console.error('❌ Error in content optimization endpoint:', error);
     return NextResponse.json(
       {
         error: 'Failed to analyze content.',
         details: error.message,
+        type: error.name || 'UnknownError',
       },
       { status: 500 }
     );

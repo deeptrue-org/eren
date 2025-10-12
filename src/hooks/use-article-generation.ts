@@ -33,7 +33,7 @@ export function useArticleGeneration() {
         briefsToProcess
       );
 
-      const response = await fetch('/api/content/outlines', {
+      const response = await fetch('/api/content/articles', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

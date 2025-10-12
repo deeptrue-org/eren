@@ -3,7 +3,7 @@ import type {
   CollectedKeyword,
   SortConfig,
   SortableKey,
-} from '../app/keywords/types';
+} from '../types/keywords';
 import { TREND_ORDER } from '../app/keywords/constants';
 
 export const useSorting = (

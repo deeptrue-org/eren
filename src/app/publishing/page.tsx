@@ -17,7 +17,7 @@ import { Loader2, Check, AlertCircle } from 'lucide-react';
 export default function PublishingPage() {
   const [finalContent, setFinalContent] = useState<string>('');
   const [selectedBrief, setSelectedBrief] = useState<any>(null);
-  const [activeOutline, setActiveOutline] = useState<any>(null);
+  const [activeArticle, setActiveArticle] = useState<any>(null);
   const [publishingOption, setPublishingOption] = useState<string>('notion');
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
   const [publishResult, setPublishResult] = useState<{
@@ -30,7 +30,7 @@ export default function PublishingPage() {
     try {
       const storedContent = sessionStorage.getItem('finalizedContent');
       const storedBrief = sessionStorage.getItem('selectedBrief');
-      const storedOutline = sessionStorage.getItem('activeOutline');
+      const storedArticle = sessionStorage.getItem('activeArticle');
 
       if (storedContent) {
         setFinalContent(storedContent);
@@ -38,8 +38,8 @@ export default function PublishingPage() {
       if (storedBrief) {
         setSelectedBrief(JSON.parse(storedBrief));
       }
-      if (storedOutline) {
-        setActiveOutline(JSON.parse(storedOutline));
+      if (storedArticle) {
+        setActiveArticle(JSON.parse(storedArticle));
       }
     } catch (error) {
       console.error('Failed to load content from sessionStorage:', error);
@@ -65,8 +65,8 @@ export default function PublishingPage() {
           },
           body: JSON.stringify({
             content: finalContent,
-            title: activeOutline?.title || selectedBrief?.topic || 'Blog Post',
-            keyword: activeOutline?.keyword || selectedBrief?.keyword,
+            title: activeArticle?.title || selectedBrief?.topic || 'Blog Post',
+            keyword: activeArticle?.keyword || selectedBrief?.keyword,
           }),
         });
 
@@ -89,7 +89,7 @@ export default function PublishingPage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${activeOutline?.title || 'blog-post'}.md`;
+        a.download = `${activeArticle?.title || 'blog-post'}.md`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -104,7 +104,7 @@ export default function PublishingPage() {
         const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
-    <title>${activeOutline?.title || 'Blog Post'}</title>
+    <title>${activeArticle?.title || 'Blog Post'}</title>
     <meta charset="UTF-8">
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
@@ -121,7 +121,7 @@ export default function PublishingPage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${activeOutline?.title || 'blog-post'}.html`;
+        a.download = `${activeArticle?.title || 'blog-post'}.html`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

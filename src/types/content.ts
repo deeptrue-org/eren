@@ -1,21 +1,21 @@
-export interface OutlineSection {
+export interface ArticleSection {
   id: string;
   title: string;
   level: 'H1' | 'H2' | 'H3';
   wordCount: number;
   keywords?: string[];
-  children: OutlineSection[];
+  children: ArticleSection[];
 }
 
-export interface ContentOutline {
+export interface Article {
   id: string;
   briefId: string;
   keyword: string;
   title: string;
-  totalWordCount: number;
-  sections: OutlineSection[];
-  draft: string;
-  internalNotes: string[];
+  content: string;
+  wordCount: number;
+  sections?: ArticleSection[];
+  internalNotes?: string[];
 }
 
 export interface OptimizationResult {

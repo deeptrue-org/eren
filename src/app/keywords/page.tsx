@@ -31,6 +31,7 @@ export default function SeedKeywordsPage() {
   const [gscCountry, setGscCountry] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
   const [isGscLoading, setIsGscLoading] = useState(false);
+  const [hasImportedGsc, setHasImportedGsc] = useState(false);
 
   // Use custom hooks
   const { recentWebUrls, recentNotionUrls, addUrlToRecent, removeUrl } =
@@ -55,6 +56,31 @@ export default function SeedKeywordsPage() {
     getKeywordTrend
   );
 
+  type IncomingKeyword = Partial<CollectedKeyword> & { keyword: string };
+
+  const mergeKeywords = (
+    existing: CollectedKeyword[],
+    incoming: IncomingKeyword[]
+  ): CollectedKeyword[] => {
+    if (!Array.isArray(incoming) || incoming.length === 0) return existing;
+    const keywordToItem = new Map<string, CollectedKeyword>();
+    for (const item of existing) keywordToItem.set(item.keyword, item);
+    for (const item of incoming) {
+      if (!item || !item.keyword) continue;
+      if (!keywordToItem.has(item.keyword)) {
+        keywordToItem.set(item.keyword, {
+          keyword: item.keyword,
+          source: (item as any).source ?? 'Manual',
+          selected: true,
+          clicks: (item as any).clicks,
+          impressions: (item as any).impressions,
+          trend: (item as any).trend,
+        });
+      }
+    }
+    return Array.from(keywordToItem.values());
+  };
+
   const handleCollectKeywords = async () => {
     addUrlToRecent(notionUrl, 'notion');
 
@@ -73,12 +99,8 @@ export default function SeedKeywordsPage() {
           useContainsExclusion,
         }),
       });
-      const data = await response.json();
-      console.log(
-        'API Response Data:',
-        data.map((k: any) => ({ keyword: k.keyword, trend: k.trend }))
-      );
-      setCollectedKeywords(data.map((k: any) => ({ ...k, selected: true })));
+      const data: IncomingKeyword[] = await response.json();
+      setCollectedKeywords((prev) => mergeKeywords(prev, data));
     } catch (error) {
       console.error('Error collecting keywords:', error);
     } finally {
@@ -105,6 +127,7 @@ export default function SeedKeywordsPage() {
       );
       const data = await response.json();
       setCollectedKeywords(data.map((k: any) => ({ ...k, selected: true })));
+      setHasImportedGsc(true);
     } catch (error) {
       console.error('Error importing from GSC:', error);
     } finally {
@@ -165,6 +188,7 @@ export default function SeedKeywordsPage() {
             setGscCountry={setGscCountry}
             handleImportFromGsc={handleImportFromGsc}
             isGscLoading={isGscLoading}
+            isCollecting={isLoading}
             websiteUrl={websiteUrl}
             setWebsiteUrl={setWebsiteUrl}
             recentWebUrls={recentWebUrls}
@@ -190,10 +214,15 @@ export default function SeedKeywordsPage() {
             variant="default"
             className="w-full"
             onClick={handleCollectKeywords}
-            disabled={isLoading}
+            disabled={isLoading || !hasImportedGsc}
           >
             {isLoading ? 'Collecting...' : 'Collect & Combine All Keywords'}
           </Button>
+          {!hasImportedGsc && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Please import from Google Search Console first.
+            </p>
+          )}
         </div>
 
         {/* Right Column: Keyword Selection */}
@@ -213,6 +242,13 @@ export default function SeedKeywordsPage() {
             sortedKeywords={sortedKeywords}
             handleSelectRow={handleSelectRow}
             getKeywordTrend={getKeywordTrend}
+            websiteUrl={websiteUrl}
+            gscPeriodUnit={gscPeriodUnit}
+            gscPeriodValue={gscPeriodValue}
+            gscCountry={gscCountry}
+            manualKeywordsCount={manualKeywords.length}
+            excludeKeywordsCount={excludeKeywords.length}
+            useContainsExclusion={useContainsExclusion}
           />
         </div>
       </div>

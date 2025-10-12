@@ -35,16 +35,16 @@ export async function POST(req: Request) {
       stream,
       keywordExpansionData,
       gscData,
-      generationMode = 'ai',
       notionUrl,
+      userContext,
     } = requestData;
 
     const briefRequest: BriefGenerationRequest = {
       keywords,
       keywordExpansionData,
       gscData,
-      generationMode,
       notionUrl,
+      userContext,
     };
 
     const unifiedService = new UnifiedContentService();
@@ -64,8 +64,8 @@ export async function POST(req: Request) {
     const results = await unifiedService.generateBriefs({
       keywords: briefRequest.keywords,
       keywordExpansionData: briefRequest.keywordExpansionData,
-      generationMode: briefRequest.generationMode,
       notionUrl: briefRequest.notionUrl,
+      userContext: briefRequest.userContext,
     });
 
     console.log(
@@ -126,16 +126,33 @@ function handleStreamingResponse(briefRequest: BriefGenerationRequest) {
 
   const customReadable = new ReadableStream({
     start(controller) {
-      const sendLog = (message: string) => {
+      let closed = false;
+
+      const safeEnqueue = (data: string) => {
+        if (closed) return;
         try {
-          if (controller.desiredSize !== null) {
-            const logMessage = createLogMessage('log', message);
-            const data = `data: ${JSON.stringify(logMessage)}\n\n`;
-            controller.enqueue(encoder.encode(data));
-          }
+          controller.enqueue(encoder.encode(data));
         } catch (error) {
-          console.warn('Failed to send log, controller may be closed:', error);
+          closed = true;
+          console.warn('Failed to send data, controller may be closed:', error);
         }
+      };
+
+      const safeClose = () => {
+        if (closed) return;
+        try {
+          controller.close();
+        } catch (_) {
+          // ignore
+        } finally {
+          closed = true;
+        }
+      };
+
+      const sendLog = (message: string) => {
+        const logMessage = createLogMessage('log', message);
+        const data = `data: ${JSON.stringify(logMessage)}\n\n`;
+        safeEnqueue(data);
       };
 
       const processWithLogs = async () => {
@@ -151,7 +168,6 @@ function handleStreamingResponse(briefRequest: BriefGenerationRequest) {
             {
               keywords: briefRequest.keywords,
               keywordExpansionData: briefRequest.keywordExpansionData,
-              generationMode: briefRequest.generationMode,
               notionUrl: briefRequest.notionUrl,
             },
             sendLog
@@ -175,9 +191,9 @@ function handleStreamingResponse(briefRequest: BriefGenerationRequest) {
             results
           );
           const finalData = `data: ${JSON.stringify(completeMessage)}\n\n`;
-          controller.enqueue(encoder.encode(finalData));
+          safeEnqueue(finalData);
 
-          controller.close();
+          safeClose();
         } catch (error: any) {
           sendLog(`❌ Error in brief generation: ${error.message}`);
           const errorMessage = createLogMessage(
@@ -187,8 +203,8 @@ function handleStreamingResponse(briefRequest: BriefGenerationRequest) {
             error.message
           );
           const errorData = `data: ${JSON.stringify(errorMessage)}\n\n`;
-          controller.enqueue(encoder.encode(errorData));
-          controller.close();
+          safeEnqueue(errorData);
+          safeClose();
         }
       };
 

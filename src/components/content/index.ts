@@ -10,7 +10,7 @@ export { ReviewSection } from './ReviewSection';
 // Re-export existing components
 export { AISuggestions } from './AISuggestions';
 export { OptimizationPanel } from './OptimizationPanel';
-export { OutlineStats } from './OutlineStats';
+export { ArticleStats } from './ArticleStats';
 
 // Optimization Panel components
 export { SeoAnalysisTab } from './SeoAnalysisTab';
@@ -22,3 +22,8 @@ export * from './OptimizationUtils';
 
 // Improvement components
 export { ImprovementPreviewDialog } from './ImprovementPreviewDialog';
+
+// Article page components
+export { MarkdownPreview } from './MarkdownPreview';
+export { ArticlesPageContent } from './ArticlesPageContent';
+export { ArticleNavigationButton } from './ArticleNavigationButton';

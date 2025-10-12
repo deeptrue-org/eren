@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Search, Lightbulb, Loader2, Bot, Pencil } from 'lucide-react';
 
 interface BriefsStartScreenProps {
@@ -18,6 +19,8 @@ interface BriefsStartScreenProps {
   hasExistingBriefs?: boolean;
   generationMode: 'ai' | 'fixed';
   setGenerationMode: (mode: 'ai' | 'fixed') => void;
+  userContext: string;
+  setUserContext: (value: string) => void;
 }
 
 export function BriefsStartScreen({
@@ -27,6 +30,8 @@ export function BriefsStartScreen({
   hasExistingBriefs = false,
   generationMode,
   setGenerationMode,
+  userContext,
+  setUserContext,
 }: BriefsStartScreenProps) {
   return (
     <div className="space-y-8">
@@ -55,6 +60,23 @@ export function BriefsStartScreen({
             </div>
           </div>
 
+          {/* User Guidance / Context */}
+          <div className="p-4 rounded-lg border bg-background">
+            <h4 className="mb-2 text-sm font-medium">
+              Guidance / Context (optional)
+            </h4>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Tell the writer how you want the briefs shaped (target audience,
+              tone, constraints, preferred angle, examples, etc.).
+            </p>
+            <Textarea
+              placeholder="e.g., Focus on B2B buyers at evaluation stage, pragmatic tone, include real integration examples and ROI framing. Avoid generic marketing fluff."
+              value={userContext}
+              onChange={(e) => setUserContext(e.target.value)}
+              className="min-h-[120px]"
+            />
+          </div>
+
           {/* Generation Mode Selection */}
           <div className="p-4 rounded-lg border bg-background">
             <h4 className="mb-4 text-sm font-medium">Generation Method:</h4>
@@ -71,14 +93,14 @@ export function BriefsStartScreen({
               >
                 <RadioGroupItem value="ai" id="ai-mode" className="mt-1" />
                 <div className="ml-4">
-                  <div className="font-semibold flex items-center gap-2">
+                  <div className="flex gap-2 items-center font-semibold">
                     <Bot className="w-4 h-4" />
                     AI-Powered Autonomous Mode
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Let the AI analyze the data and autonomously decide the best
-                    5 content angles (e.g., comparison, tutorial, trend
-                    analysis). This provides more creative and diverse results.
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Let the AI analyze the data and autonomously decide 5 strong
+                    angles aligned with current SERP evidence. More creative and
+                    diverse results.
                   </p>
                 </div>
               </Label>
@@ -92,20 +114,19 @@ export function BriefsStartScreen({
                   className="mt-1"
                 />
                 <div className="ml-4">
-                  <div className="font-semibold flex items-center gap-2">
+                  <div className="flex gap-2 items-center font-semibold">
                     <Pencil className="w-4 h-4" />
-                    Fixed Category Mode
+                    Structured Mode
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Generate briefs based on the 5 predefined categories:
-                    Comparison, Tutorial, Trend, Guide, and Analysis. This
-                    provides predictable and structured results.
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Generate 5 well-organized briefs with consistent structure
+                    and clear differentiation. No forced categories; SERP
+                    evidence should drive angle.
                   </p>
                 </div>
               </Label>
             </RadioGroup>
           </div>
-
           <div className="flex justify-center pt-4">
             <Button
               size="lg"

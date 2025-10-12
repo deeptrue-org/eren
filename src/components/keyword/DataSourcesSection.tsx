@@ -22,6 +22,7 @@ interface DataSourcesSectionProps {
   setGscCountry: (country: string) => void;
   handleImportFromGsc: () => void;
   isGscLoading: boolean;
+  isCollecting: boolean;
   websiteUrl: string;
   setWebsiteUrl: (url: string) => void;
   recentWebUrls: string[];
@@ -55,6 +56,7 @@ export const DataSourcesSection = ({
   setGscCountry,
   handleImportFromGsc,
   isGscLoading,
+  isCollecting,
   websiteUrl,
   setWebsiteUrl,
   recentWebUrls,
@@ -130,7 +132,7 @@ export const DataSourcesSection = ({
         <Button
           className="w-full"
           onClick={handleImportFromGsc}
-          disabled={isGscLoading || !websiteUrl}
+          disabled={isGscLoading || isCollecting || !websiteUrl}
         >
           {isGscLoading ? 'Importing...' : 'Import from Google Search Console'}
         </Button>

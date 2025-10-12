@@ -33,12 +33,12 @@ export default function DashboardPage() {
         </div>
 
         <div className="p-6 rounded-lg border">
-          <h3 className="mb-2 font-semibold">Create Content</h3>
+          <h3 className="mb-2 font-semibold">Create Articles</h3>
           <p className="mb-4 text-sm text-muted-foreground">
-            Generate outlines and create SEO-optimized drafts
+            Generate complete articles with AI assistance
           </p>
-          <Link href="/content/outlines">
-            <Button>Create Content</Button>
+          <Link href="/content/articles">
+            <Button>Create Articles</Button>
           </Link>
         </div>
       </div>
@@ -76,9 +76,9 @@ export default function DashboardPage() {
               3
             </div>
             <div>
-              <p className="font-medium">Content Creation</p>
+              <p className="font-medium">Article Creation</p>
               <p className="text-sm text-muted-foreground">
-                Generate outlines → create drafts → optimize for SEO
+                Generate complete articles → optimize for SEO → review and edit
               </p>
             </div>
           </div>

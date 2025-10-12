@@ -25,7 +25,11 @@ import {
   SortingState,
   getSortedRowModel,
 } from '@tanstack/react-table';
+// Subcomponents split for separation of concerns
 import { TrendChart } from './TrendChart';
+import { TrendChartSection as ImportedTrendChartSection } from './keyword-results/TrendChartSection';
+import { InterestByRegion as ImportedInterestByRegion } from './keyword-results/InterestByRegion';
+import { RelatedDataSection as ImportedRelatedDataSection } from './keyword-results/RelatedData';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ExpandedKeyword } from '@/lib/keyword-expansion/types';
 import { RowSelectionState } from '@tanstack/react-table';
@@ -138,7 +142,8 @@ const RisingDataList = ({
                 </div>
                 <span
                   className={`w-24 text-right text-sm tabular-nums ${
-                    isBreakout ? 'font-semibold text-destructive' : ''}`}
+                    isBreakout ? 'font-semibold text-destructive' : ''
+                  }`}
                 >
                   {q.formattedValue}
                 </span>
@@ -210,7 +215,7 @@ const InterestByRegion = ({
       return (
         region.value &&
         region.value.length > 0 &&
-        region.value[0] >= 0 && // 0 이상의 값 포함 (미미한 수치도 표시)
+        region.value[0] >= 0 &&
         region.geoName &&
         region.geoName.trim() !== ''
       );
@@ -335,8 +340,6 @@ const TrendChartSection = ({
     );
   }
 
-  // For SERP API data, if no interestOverTime is available, show a message that data is not available
-  // instead of offering to fetch more data, since SERP API already provided all available data
   if (isSerpApiData) {
     return (
       <div className="text-center">
@@ -347,7 +350,6 @@ const TrendChartSection = ({
     );
   }
 
-  // For other sources (like seed keywords), allow fetching trend data from Google Trends
   return (
     <div className="text-center">
       <p className="mb-2 text-sm text-muted-foreground">
@@ -422,7 +424,7 @@ const ExpandedRowContent = ({
 
   return (
     <div className="p-4 space-y-4 bg-muted/50">
-      <TrendChartSection
+      <ImportedTrendChartSection
         keywordData={keywordData}
         onFetchTrends={onFetchTrends}
       />
@@ -486,7 +488,7 @@ const ExpandedRowContent = ({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-2">
         {/* Interest by Region Section */}
         {interestByRegion && interestByRegion.length > 0 ? (
-          <InterestByRegion data={interestByRegion} />
+          <ImportedInterestByRegion data={interestByRegion} />
         ) : (
           <div>
             <h4 className="mb-2 font-semibold">Interest by Region</h4>
@@ -498,7 +500,7 @@ const ExpandedRowContent = ({
 
         {/* Related Queries Section */}
         {hasRelatedQueries ? (
-          <RelatedDataSection
+          <ImportedRelatedDataSection
             title="Related Queries"
             topData={relatedQueries.top}
             risingData={relatedQueries.rising}
@@ -515,7 +517,7 @@ const ExpandedRowContent = ({
 
         {/* Related Topics Section */}
         {hasRelatedTopics ? (
-          <RelatedDataSection
+          <ImportedRelatedDataSection
             title="Related Topics"
             topData={relatedTopics.top}
             risingData={relatedTopics.rising}
@@ -737,16 +739,6 @@ export function KeywordResults({
       header: 'Region',
       cell: ({ row }) => {
         const geo = row.original.geo;
-
-        // Only log for seed keywords to reduce noise
-        if (row.original.source === 'seed') {
-          console.log(`🖥️ UI Debug - Geo for "${row.original.keyword}":`, {
-            geo: geo,
-            source: row.original.source,
-            hasInterestByRegion: !!row.original.interestByRegion,
-            interestByRegionLength: row.original.interestByRegion?.length || 0,
-          });
-        }
 
         if (geo) {
           return (
